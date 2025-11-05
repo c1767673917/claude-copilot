@@ -118,9 +118,37 @@ Each agent has ONE clear job. Never overstep boundaries.
 
 ---
 
+## 🚨 CRITICAL: Codex Invocation Rules
+
+### Self-Check Protocol (MANDATORY BEFORE ANY BACKEND WORK)
+
+**Before writing ANY backend code, ask yourself**:
+
+```
+Q1: Am I about to write backend code? (API, service, database, middleware)
+    → YES: STOP. Go to "Execute Codex Call" below.
+    → NO: Proceed with frontend/docs work.
+
+Q2: Am I fixing a backend bug?
+    → YES: STOP. Go to "Execute Codex Call" below.
+    → NO: Proceed with frontend bug fix.
+
+Q3: Am I reviewing backend code?
+    → YES: STOP. Go to "Execute Codex Call" below.
+    → NO: Proceed with frontend review.
+```
+
+**If you answered YES to any question above**:
+1. **IMMEDIATELY STOP** what you're doing
+2. **DELETE** any backend code you just wrote (if applicable)
+3. **EXECUTE** Codex call following "How to Call Codex" section below
+4. **DO NOT PROCEED** until Codex responds
+
+---
+
 ## When to Call Codex
 
-### ✅ Must Call Codex Scenarios
+### ✅ MANDATORY Codex Call Scenarios
 
 **Backend API Implementation**:
 - RESTful endpoints
@@ -141,10 +169,12 @@ Each agent has ONE clear job. Never overstep boundaries.
 **Backend Bug Fixes**:
 - API/server/database errors
 - Performance issues
+- Backend logic errors
 
 **Backend Code Review**:
 - Security vulnerability checks
 - Performance analysis
+- Backend code quality review
 
 ### ❌ Do NOT Call Codex Scenarios
 
@@ -156,71 +186,281 @@ Each agent has ONE clear job. Never overstep boundaries.
 
 ---
 
-## How to Call Codex (4-Step Process)
+## 🛡️ Violation Detection & Self-Correction
 
-### Step 1: Prepare Context
-Read these files:
+**If you catch yourself**:
+- Writing backend code directly → **STOP, DELETE, CALL CODEX**
+- Modifying backend files → **STOP, REVERT, CALL CODEX**
+- Fixing backend bugs manually → **STOP, CALL CODEX**
+- Reviewing backend without Codex → **STOP, CALL CODEX**
+
+**Emergency Stop Phrase**:
+If at ANY point you realize you're violating this rule, immediately output:
 ```
-1. 00-constraints.yaml           (CRITICAL - tech stack)
-2. 01-product-requirements.md    (features)
-3. 02-system-architecture.md     (design)
-4. 03-sprint-plan.md             (tasks)
-5. 04-frontend/api-client.md     (if exists - API contract)
-6. 00-repo-scan.md               (if exists - repo context)
+⚠️ VIOLATION DETECTED: I was about to [action] without calling Codex.
+CORRECTIVE ACTION: Stopping immediately and calling mcp__codex_cli__ask_codex.
 ```
 
-### Step 2: Build Prompt & Call MCP
-```javascript
-mcp__codex_cli__ask_codex({
-  model: "gpt-5-codex",
-  sandbox: false,
-  fullAuto: true,
-  yolo: false,
-  search: true,
-  prompt: `
-# BACKEND IMPLEMENTATION
+---
 
-## TECHNOLOGY CONSTRAINTS (CRITICAL)
-${read_file('00-constraints.yaml')}
+## How to Call Codex (4-Step Mandatory Process)
 
-## CONTEXT
-${read_file('01-product-requirements.md')}
-${read_file('02-system-architecture.md')}
-${extract_backend_tasks('03-sprint-plan.md')}
+### Step 1: Prepare Context (READ ALL FILES)
 
-## FRONTEND API CONTRACT (MUST MATCH)
-${read_file('04-frontend/api-client.md')}
+**YOU MUST read these files in THIS ORDER**:
 
-## YOUR TASK
-${specific_backend_tasks}
+1. **Read** `.claude/specs/{feature}/00-constraints.yaml`
+   - Purpose: Lock technology stack
+   - Critical: Pass EXACT content to Codex
+
+2. **Read** `.claude/specs/{feature}/01-product-requirements.md`
+   - Purpose: Understand feature requirements
+
+3. **Read** `.claude/specs/{feature}/02-system-architecture.md`
+   - Purpose: Follow architectural decisions
+
+4. **Read** `.claude/specs/{feature}/03-sprint-plan.md`
+   - Purpose: Extract backend tasks ONLY
+
+5. **Read** `.claude/specs/{feature}/04-frontend/api-client.md` (if exists)
+   - Purpose: CRITICAL - Backend must match this contract exactly
+
+6. **Read** `.claude/specs/{feature}/00-repo-scan.md` (if exists)
+   - Purpose: Understand repository context
+
+**CHECKPOINT**: Before Step 2, verify you have content from ALL files above.
+
+---
+
+### Step 2: Build Complete Prompt
+
+**Template** (fill in ALL sections):
+
+```markdown
+# BACKEND [IMPLEMENTATION|BUG_FIX|CODE_REVIEW]
+
+## TECHNOLOGY CONSTRAINTS (MUST FOLLOW - NON-NEGOTIABLE)
+[paste COMPLETE 00-constraints.yaml content here]
+
+**ENFORCEMENT**: Use ONLY the specified tech stack. Any deviation = FAILURE.
+
+## PRODUCT REQUIREMENTS
+[paste relevant sections from 01-product-requirements.md]
+
+## SYSTEM ARCHITECTURE
+[paste relevant sections from 02-system-architecture.md]
+
+## SPRINT PLAN - BACKEND TASKS ONLY
+[extract ONLY backend-related tasks from 03-sprint-plan.md]
+
+## REPOSITORY CONTEXT
+[paste 00-repo-scan.md if exists]
+
+## FRONTEND API CONTRACT (CRITICAL - EXACT MATCH REQUIRED)
+[paste 04-frontend/api-client.md if exists]
+
+**CRITICAL**: Backend responses MUST match:
+- Exact field names (camelCase/snake_case as specified)
+- Exact data types
+- Exact error format
+- Exact authentication flow
+
+---
+
+## YOUR SPECIFIC TASK
+
+[Write clear, specific instructions for current backend work]
+
+Examples:
+- "Implement user authentication API endpoints per architecture"
+- "Fix bug: login endpoint returns 500 when email is invalid"
+- "Review UserService.ts for security vulnerabilities"
+
+---
 
 ## OUTPUT REQUIREMENTS
-- Code in repo
-- specs/{feature}/04-backend/implementation.md
-- specs/{feature}/04-backend/codex-output.json
-  `
-})
+
+### 1. Code Implementation
+- Implement ALL code in repository (not in markdown)
+- Follow project structure from architecture
+- Write tests alongside implementation
+- Run tests and ensure passing
+
+### 2. Implementation Log → `.claude/specs/{feature}/04-backend/implementation.md`
+**Required sections**:
+- Summary (sprint, tasks completed, files modified, test coverage %)
+- Implemented Features (with file paths, test results, API endpoints)
+- Technical Decisions (why you made certain choices)
+- Questions for Review (priority High/Medium/Low, context, your recommendation)
+- Self-Review Checklist (constraints compliance, tests status, coverage %)
+
+### 3. Codex Output JSON → `.claude/specs/{feature}/04-backend/codex-output.json`
+**Required format**:
+```json
+{
+  "timestamp": "ISO 8601",
+  "status": "completed|partial|failed",
+  "tasks_completed": ["task1", "task2"],
+  "files_changed": ["path1", "path2"],
+  "tests_written": 15,
+  "tests_passing": 15,
+  "coverage_percent": 85,
+  "questions": [
+    {
+      "priority": "high|medium|low",
+      "question": "specific question",
+      "context": "why this matters",
+      "recommendation": "what I suggest"
+    }
+  ],
+  "self_review": {
+    "constraints_followed": true,
+    "all_tasks_completed": true,
+    "tests_passing": true,
+    "api_contract_matched": true
+  }
+}
+```
 ```
 
-### Step 3: Verify Output
-**Files exist**:
-- [ ] Code committed to repository
-- [ ] `04-backend/implementation.md` (implementation log)
-- [ ] `04-backend/codex-output.json` (questions + status)
-- [ ] Test files generated
+---
 
-**Content valid**:
-- [ ] Technology constraints followed
-- [ ] All tasks completed
-- [ ] Tests passing
+### Step 3: EXECUTE Codex MCP Tool Call
 
-### Step 4: Review & Iterate
-1. Read `codex-output.json` → check `questions` array
-2. Answer each question → save to `04-backend/review-answers.md`
-3. Decide:
-   - ✅ All good → Mark complete
-   - 🔄 Needs fixes → Call Codex again (max 3 iterations)
-   - ⚠️ Still blocked → Escalate to user
+**NOW you must use the tool** `mcp__codex_cli__ask_codex`:
+
+**Parameters**:
+- `model`: "gpt-5-codex" (always use this)
+- `sandbox`: false
+- `fullAuto`: true
+- `yolo`: false
+- `search`: true (enable web search for best practices)
+- `prompt`: [paste complete prompt from Step 2]
+
+**EXECUTION CHECKPOINT**:
+- Have you prepared the complete prompt? → If NO, go back to Step 2
+- Have you verified all context files exist? → If NO, go back to Step 1
+- Are you ready to call the tool NOW? → If YES, execute below
+
+**DO IT NOW**:
+Use the `mcp__codex_cli__ask_codex` tool with parameters above.
+
+**DO NOT PROCEED** to Step 4 until tool returns response.
+
+---
+
+### Step 4: Verify Codex Output (MANDATORY CHECKS)
+
+**File Existence Verification**:
+```
+□ .claude/specs/{feature}/04-backend/implementation.md exists
+□ .claude/specs/{feature}/04-backend/codex-output.json exists
+□ Backend code files exist in repository
+□ Test files exist in repository
+```
+
+**Content Validation**:
+```
+□ Read codex-output.json → status is not "failed"
+□ All backend tasks from sprint plan are addressed
+□ Technology constraints were followed (check implementation.md)
+□ Tests were written (check test count > 0)
+□ Code follows repository patterns (verify file structure)
+```
+
+**Quality Checks**:
+```
+□ Run tests → all passing?
+□ Check coverage → meets target (>80%)?
+□ Review implementation.md → technical decisions make sense?
+□ Check questions[] in codex-output.json → any blockers?
+```
+
+**IF ANY CHECK FAILS**:
+- Document which check failed
+- Go to Step 5 (Review & Iterate)
+- DO NOT mark task as complete
+
+---
+
+### Step 5: Review Codex Questions & Decide Next Action
+
+**Read** `codex-output.json` → `questions` array
+
+**For EACH question**:
+1. **Understand**: Read question + context + recommendation
+2. **Decide**: Make clear decision (approve, modify, reject)
+3. **Document**: Write to `.claude/specs/{feature}/04-backend/review-answers.md`
+
+**Answer Template**:
+```markdown
+## Review Answers - [Date]
+
+### Question 1: [title]
+**Codex Question**: [paste question]
+**Codex Recommendation**: [paste recommendation]
+**My Decision**: [Approve | Modify | Reject]
+**Reason**: [explain your decision]
+**Action Required**: [specific changes needed, if any]
+
+[Repeat for each question]
+```
+
+**Decision Matrix**:
+```
+Codex Questions = 0 AND Tests Passing AND Coverage Good
+  → ✅ Mark complete, move to next task
+
+Codex Questions > 0 OR Tests Failing OR Coverage Low
+  → 🔄 Prepare revision (max 3 iterations total)
+  → Create review-answers.md
+  → Call Codex again with feedback
+
+Iterations = 3 AND Still has issues
+  → ⚠️ ESCALATE TO USER
+  → Document blockers
+  → Request user guidance
+```
+
+---
+
+### Step 6: Backend Revision (If Step 5 requires changes)
+
+**Iteration Counter**: Track attempts (1, 2, 3)
+
+**Prepare Revision Prompt**:
+```markdown
+# BACKEND REVISION - Iteration [N/3]
+
+## ORIGINAL CONTEXT
+[paste complete context from Step 2]
+
+## REVIEW FEEDBACK
+[paste review-answers.md content]
+
+## SPECIFIC CHANGES REQUIRED
+[extract action items from review-answers.md]
+
+## YOUR TASK
+1. Address ALL feedback points
+2. Make ONLY necessary changes
+3. Re-run all tests
+4. Update implementation.md with revision log
+
+## REVISION LOG REQUIREMENTS
+Add to implementation.md:
+### Revision [N] - [Date]
+- **Issues Fixed**: [list]
+- **Questions Addressed**: [list]
+- **Test Results**: [pass/fail counts]
+- **Changes Made**: [file paths and descriptions]
+```
+
+**Execute**: Call `mcp__codex_cli__ask_codex` again with revision prompt
+
+**After Response**: Go back to Step 4 (Verify Output)
+
+**Iteration Limit**: If iteration = 3 and still failing → **STOP and ESCALATE TO USER**
 
 ---
 
