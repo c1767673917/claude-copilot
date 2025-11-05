@@ -259,6 +259,11 @@ CORRECTIVE ACTION: Stopping immediately and calling mcp__codex_cli__ask_codex.
 ## FRONTEND API CONTRACT (CRITICAL - EXACT MATCH REQUIRED)
 [paste 04-frontend/api-client.md if exists]
 
+## CODE CONTEXT (ATTACH VIA @file)
+- @path/to/relevant/file1
+- @path/to/relevant/file2
+- [Summaries for any trimmed sections; note omissions explicitly]
+
 **CRITICAL**: Backend responses MUST match:
 - Exact field names (camelCase/snake_case as specified)
 - Exact data types
@@ -281,14 +286,16 @@ Examples:
 ## OUTPUT REQUIREMENTS
 
 ### 1. Code Implementation
-- Implement ALL code in repository (not in markdown)
+- Implement ALL code in repository (not in markdown; do not use apply_patch)
 - Follow project structure from architecture
 - Write tests alongside implementation
 - Run tests and ensure passing
+- After coding, capture change summary via `git status --short` and `git diff --stat`
 
 ### 2. Implementation Log → `.claude/specs/{feature}/04-backend/implementation.md`
 **Required sections**:
 - Summary (sprint, tasks completed, files modified, test coverage %)
+- Change Summary (git status --short output, git diff --stat output, per-file notes highlighting added/modified/deleted files with reasons)
 - Implemented Features (with file paths, test results, API endpoints)
 - Technical Decisions (why you made certain choices)
 - Questions for Review (priority High/Medium/Low, context, your recommendation)
@@ -305,6 +312,20 @@ Examples:
   "tests_written": 15,
   "tests_passing": 15,
   "coverage_percent": 85,
+  "change_summary": {
+    "git_status": ["M src/api/users.py", "A migrations/001.sql"],
+    "git_diff_stat": [
+      " src/api/users.py | 45 ++++++++++++++++++++++++++++++",
+      " migrations/001.sql | 12 ++++++++"
+    ],
+    "files": [
+      {
+        "path": "src/api/users.py",
+        "status": "modified",
+        "summary": "Updated handlers to enforce password validation"
+      }
+    ]
+  },
   "questions": [
     {
       "priority": "high|medium|low",
@@ -362,17 +383,18 @@ Use the `mcp__codex_cli__ask_codex` tool with parameters above.
 **Content Validation**:
 ```
 □ Read codex-output.json → status is not "failed"
-□ All backend tasks from sprint plan are addressed
-□ Technology constraints were followed (check implementation.md)
-□ Tests were written (check test count > 0)
-□ Code follows repository patterns (verify file structure)
+□ Read codex-output.json → tests_passing > 0
+□ Read codex-output.json → change_summary.git_status & git_diff_stat populated
+□ Compare change_summary.files[] notes against actual repository edits
+□ Confirm every @file listed in prompt is represented in change_summary or explicitly marked as read-only/no-change in implementation.md
+□ Verify implementation.md documents all backend tasks and change summary details
 ```
 
 **Quality Checks**:
 ```
 □ Run tests → all passing?
 □ Check coverage → meets target (>80%)?
-□ Review implementation.md → technical decisions make sense?
+□ Review implementation.md → technical decisions + change summary make sense?
 □ Check questions[] in codex-output.json → any blockers?
 ```
 
@@ -385,7 +407,12 @@ Use the `mcp__codex_cli__ask_codex` tool with parameters above.
 
 ### Step 5: Review Codex Questions & Decide Next Action
 
-**Read** `codex-output.json` → `questions` array
+**Review change summary first**:
+- Inspect `codex-output.json.change_summary` (git status, diff stat, per-file notes)
+- Cross-check against implementation.md Change Summary
+- Note any unexpected edits before proceeding
+
+**Then read** `codex-output.json` → `questions` array
 
 **For EACH question**:
 1. **Understand**: Read question + context + recommendation

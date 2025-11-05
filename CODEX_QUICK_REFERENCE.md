@@ -94,13 +94,18 @@
 ## FRONTEND API CONTRACT (如存在)
 [粘贴 api-client.md]
 
+## CODE CONTEXT (@文件引用)
+- @路径/文件A (必要的现有代码片段，若裁剪请备注)
+- @路径/文件B (配置/迁移等)
+- [说明：如未包含整个文件，注明省略范围]
+
 ## YOUR SPECIFIC TASK
 [清晰、具体的后端任务描述]
 
 ## OUTPUT REQUIREMENTS
-- Code in repo
-- implementation.md
-- codex-output.json
+- Repo code updated directly (no markdown / no apply_patch)
+- implementation.md (must include Change Summary with git status, git diff --stat, per-file notes)
+- codex-output.json (must include change_summary: git status, git diff --stat, per-file summaries)
 ```
 
 **检查点**: 所有章节已填充? ✅
@@ -139,7 +144,10 @@
 ```bash
 □ codex-output.json 状态不是 "failed"?
 □ tests_passing 数量 > 0?
-□ 所有后端任务已处理?
+□ change_summary 中包含 git status / git diff --stat?
+□ change_summary.files[] 与仓库实际改动一致?
+□ implementation.md Change Summary 填写完整?
+□ 每个 @文件都在 change_summary 中体现或在 implementation.md 说明无需改动?
 □ 技术栈约束已遵守?
 ```
 
@@ -147,7 +155,7 @@
 ```bash
 □ 运行测试 → 全部通过?
 □ 测试覆盖率 > 80%?
-□ 技术决策已文档化?
+□ 技术决策与 Change Summary 一致?
 □ questions[] 数组已检查?
 ```
 
@@ -156,6 +164,8 @@
 ---
 
 ### Step 5: 回答问题 & 决策
+**先检查**: 确认 codex-output.json 与 implementation.md 的 Change Summary 覆盖所有 @文件，记录任何可疑或缺失的改动。
+
 **读取**: `codex-output.json` → `questions` 数组
 
 **每个问题**:

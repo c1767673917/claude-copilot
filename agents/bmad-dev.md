@@ -265,6 +265,15 @@ Examples of backend tasks:
 ## FRONTEND API CONTRACT (CRITICAL - EXACT MATCH REQUIRED)
 [PASTE 04-frontend/api-client.md CONTENT IF FILE EXISTS]
 
+---
+
+## CODE CONTEXT (ATTACH VIA @file)
+- @path/to/relevant/backend/file.go
+- @path/to/config/or/migration.sql
+- [If sections are trimmed, summarize omitted portions and rationale]
+
+---
+
 **CRITICAL REQUIREMENTS**:
 - Backend API responses MUST match exact field names specified above
 - MUST use exact data types specified
@@ -287,10 +296,11 @@ Examples:
 ## OUTPUT REQUIREMENTS
 
 ### 1. Code Implementation
-- Write ALL code directly in repository (NOT in markdown)
+- Write ALL code directly in repository (NOT in markdown; do not use apply_patch)
 - Follow project structure from architecture
 - Write tests alongside implementation
 - Run tests and ensure 100% passing
+- After coding, capture change summary (`git status --short`, `git diff --stat`) for reporting
 
 ### 2. Implementation Log → `.claude/specs/{feature}/04-backend/implementation.md`
 **Required sections**:
@@ -301,6 +311,16 @@ Examples:
 - Files Modified: [paths]
 - Tests Written: [count]
 - Test Coverage: [%]
+
+## Change Summary
+- Git Status (`git status --short`):
+  - [output line 1]
+  - [output line 2]
+- Diff Stat (`git diff --stat`):
+  - [output line 1]
+  - [output line 2]
+- File Notes:
+  - [Status: Added|Modified|Deleted] [path] — [brief justification]
 
 ## Implemented Features
 [For each feature]:
@@ -337,6 +357,20 @@ Examples:
   "tests_written": 15,
   "tests_passing": 15,
   "coverage_percent": 85,
+  "change_summary": {
+    "git_status": ["M src/api/users.py", "A migrations/001.sql"],
+    "git_diff_stat": [
+      " src/api/users.py | 45 ++++++++++++++++++++++++++++++",
+      " migrations/001.sql | 12 ++++++++"
+    ],
+    "files": [
+      {
+        "path": "src/api/users.py",
+        "status": "modified",
+        "summary": "Updated handlers to enforce password validation"
+      }
+    ]
+  },
   "questions": [
     {
       "priority": "high|medium|low",
@@ -408,6 +442,9 @@ If ANY box unchecked → Go back and complete that step
 ```
 □ Read codex-output.json → verify "status" is NOT "failed"
 □ Read codex-output.json → verify "tests_passing" count > 0
+□ Read codex-output.json → verify `change_summary.git_status` & `git_diff_stat` populated
+□ Compare `change_summary.files` summaries against actual repository edits
+□ Confirm every @file referenced in prompt is in change_summary or noted as read-only/no-change in implementation.md
 □ Read implementation.md → verify all backend tasks are mentioned
 □ Check repository → verify code follows expected file structure
 ```
@@ -417,6 +454,7 @@ If ANY box unchecked → Go back and complete that step
 □ Run tests (Bash) → verify all tests pass
 □ Check coverage → verify meets target (>80%)
 □ Read implementation.md → verify technical decisions documented
+□ Confirm implementation.md Change Summary matches codex-output.json change_summary
 □ Read codex-output.json → count questions[] array length
 ```
 
@@ -430,8 +468,12 @@ If ANY box unchecked → Go back and complete that step
 
 **ACTION REQUIRED**:
 
-1. **Read** `codex-output.json` → locate `"questions"` array
-2. **For EACH question** in array:
+1. **Review change summary**:
+   - Read `codex-output.json.change_summary` (git status, diff stat, file notes)
+   - Cross-check against implementation.md Change Summary
+   - Document any suspicious or unexpected modifications OR missing @files before responding
+2. **Read** `codex-output.json` → locate `"questions"` array
+3. **For EACH question** in array:
    - Understand: Read question + context + recommendation
    - Decide: Approve | Modify | Reject
    - Document: Write to `.claude/specs/{feature}/04-backend/review-answers.md`
@@ -522,6 +564,7 @@ IF (any CHECK FAILED in 4.1.4)
 2. Make ONLY necessary changes (don't rewrite working code)
 3. Re-run ALL tests after changes
 4. Update implementation.md with revision log
+5. Refresh change summary (`git status --short`, `git diff --stat`, file notes) in implementation.md and codex-output.json
 
 **Revision Log Template** (append to implementation.md):
 ```markdown
@@ -675,7 +718,7 @@ A3: Integration/unclear (both frontend and backend involved)
 5. Verify all tests pass
 
 ## OUTPUT REQUIREMENTS
-Same as Step 4.1 (implementation.md + codex-output.json + code changes)
+Same as Step 4.1 (implementation.md with Change Summary + codex-output.json with `change_summary` + code changes)
 ```
 
 **After Codex responds**: Follow same verification process as Step 4.1.4-4.1.6

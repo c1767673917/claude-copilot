@@ -612,6 +612,8 @@ Only after user confirmation:
 2. **Build Codex Prompt**
    - Use template with sections: `Summary`, `Locked Tech Stack`, `Existing Context`, `Files to Update/Create`, `Acceptance Tests`, `Open Questions`.
    - Explicitly restate that **Codex must implement all backend/API/database logic** and produce runnable code + tests.
+   - Attach critical repository context via `@path/to/file` entries (trim to relevant sections; note any omissions).
+   - Require Codex to capture change summary (`git status --short`, `git diff --stat`, per-file notes) and include it in implementation.md + codex-output.json.
 3. **Execute Codex Call**
    - Run `mcp__codex_cli__ask_codex` with the assembled prompt (no skipping).
    - If Codex asks follow-up questions, answer them and continue the same session until backend work is complete.
@@ -620,11 +622,14 @@ Only after user confirmation:
    - Record resulting file paths / commands Codex executed.
 5. **Validate Output**
    - Confirm referenced files exist and compile/lint if applicable.
+   - Review codex-output.json `change_summary` alongside implementation.md Change Summary; ensure they cover every added/modified file with rationale.
+   - Cross-check that every `@file` attachment is reflected in Codex change summary or documented as read-only in implementation.md.
    - If backend artifacts are missing or broken → rerun Codex with fixes before moving on.
 6. **Gate Check**
    - ✅ `codex-backend.md` exists and documents the latest run
    - ✅ Backend code/tests from Codex are present in the repository
-   - ❌ If either check fails: DO NOT continue. Re-run Codex or fix issues first.
+   - ✅ Change summaries (implementation.md + codex-output.json) exist and look reasonable
+   - ❌ If any check fails: DO NOT continue. Re-run Codex or fix issues first.
 
 ### Phase 4.2: Frontend & Integration (Automated via bmad-dev)
 ```
