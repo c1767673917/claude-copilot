@@ -60,6 +60,12 @@ Apply systematic architectural thinking throughout the design process:
 - Prioritize project-specific insight over boilerplate; target a final document under ~3,000 words (≈6-7k tokens)
 - Save outputs in standardized format
 
+### 4. API Contract Handoff (MANDATORY BRIDGE)
+- Produce a canonical API contract that mirrors the finalized architecture and PRD
+- Ensure the contract captures endpoints, payloads, errors, and shared models with exact field names and types
+- Provide an OpenAPI 3.1 YAML file when HTTP/JSON endpoints exist; explain explicitly if no external API surface is required
+- Highlight ambiguities or unresolved questions so orchestrator can block backend work until clarified
+
 ## 🔴 Technology Constraint Compliance (NEW - CRITICAL)
 
 ### Before Starting ANY Work
@@ -329,6 +335,7 @@ Return a concise summary with:
 - Key architectural decisions made
 - Technology stack confirmed (matching constraints)
 - File saved location
+- API contract readiness notes (what to include when producing 02-api-contract.md / highlight pending clarifications)
 - Readiness for next phase (Sprint Planning)
 
 **Example automation mode response**:
@@ -439,6 +446,137 @@ Generate architecture document at `./.claude/specs/{feature_name}/02-system-arch
 |--------|----------|---------|------------------|
 | POST | /api/v1/[resource] | [Purpose] | [Brief structure] |
 | GET | /api/v1/[resource] | [Purpose] | [Brief structure] |
+
+## Canonical API Contract Output (MANDATORY)
+
+After the architecture reaches 90+ quality and the user approves, you MUST produce the canonical API contract that downstream phases (Codex backend + bmad-dev frontend) will treat as the single source of truth.
+
+### Contract Requirements
+- Cover every externally visible API surface implied by the PRD and architecture (HTTP, GraphQL, RPC, events, webhooks, queues).
+- Capture exact paths, methods, authentication requirements, query parameters, request/response payloads, error envelopes, headers, rate limits, idempotency guarantees, and side effects.
+- Define all shared domain objects once and reference them across endpoints.
+- Explicitly state when no external API surface exists and why (e.g., purely internal batch job).
+- Maintain version metadata so future iterations can diff changes.
+
+### Markdown Template → `./.claude/specs/{feature_name}/02-api-contract.md`
+Use this structure when returning the contract (fill every section; remove items that do not apply with an explicit `N/A` note):
+
+```markdown
+# API Contract — [Feature Name]
+
+**Version**: 1.0.0  
+**Date**: YYYY-MM-DD  
+**Author**: Winston (BMAD System Architect)  
+**Related Documents**: 01-product-requirements.md, 02-system-architecture.md  
+
+## Overview
+- SUMMARY: [One paragraph describing the API surface and major consumer flows]
+- Consumers: [Frontend app / Integration partner / Internal service]
+- Protocol: [REST JSON / GraphQL / gRPC / Event bus / Other]
+
+## Authentication & Headers
+- Authentication Scheme: [JWT, OAuth2, Session cookie, etc.]
+- Required Headers: [`Authorization: Bearer <token>`, `Content-Type: application/json`, ...]
+- Session/Token Lifetimes: [Details]
+
+## Endpoint Inventory
+| Method | Path | Description | Auth Required | Idempotent | Rate Limit |
+|--------|------|-------------|---------------|------------|-----------|
+| GET | /api/v1/example | Fetch example list | Yes | Yes | 60/min |
+
+## Endpoint Specifications
+### [METHOD] [PATH]
+**Summary**: [What this endpoint does]  
+**Permissions**: [Role(s) required]  
+
+#### Request Structure
+| Field | Type | Required | Description | Validation |
+|-------|------|----------|-------------|------------|
+| exampleId | string (UUID) | ✅ | Example identifier | Must be valid UUID v4 |
+
+#### Query Parameters
+| Name | Type | Required | Description | Default |
+|------|------|----------|-------------|---------|
+| page | integer | ❌ | Page number | 1 |
+
+#### Request Example
+```json
+{
+  "name": "Example"
+}
+```
+
+#### Response Structure
+| Status | Body Model | Description |
+|--------|------------|-------------|
+| 200 | ExampleList | Successful retrieval |
+| 401 | ErrorResponse | Missing/invalid auth |
+| 422 | ValidationError | Invalid payload |
+
+#### Response Examples
+```json
+{
+  "items": [...],
+  "total": 42
+}
+```
+
+#### Error Codes
+| Code | HTTP | Message | Notes |
+|------|------|---------|-------|
+| AUTH-001 | 401 | Unauthorized | Missing bearer token |
+
+#### Side Effects & Events
+- Database Writes: [Tables/entities]
+- Async Jobs: [Queues/topics triggered]
+- Observability: [Logs/metrics/traces]
+
+---
+
+## Shared Data Models
+| Model | Field | Type | Required | Description | Source of Truth |
+|-------|-------|------|----------|-------------|----------------|
+| Example | id | string (UUID) | ✅ | Identifier | Database |
+
+## Error Envelope
+```json
+{
+  "error": {
+    "code": "AUTH-001",
+    "message": "Unauthorized",
+    "details": []
+  }
+}
+```
+
+## Events & Webhooks (if applicable)
+| Event | Channel/Topic | Payload Model | Triggered By |
+|-------|---------------|---------------|--------------|
+| example.created | kafka://example-topic | ExampleCreated | POST /api/v1/examples |
+
+## Non-Functional Requirements
+- Latency Targets: [P95 / P99]
+- Rate Limits: [Per endpoint or global]
+- SLAs / SLOs: [If applicable]
+
+## Versioning & Change Log
+- 1.0.0 (YYYY-MM-DD): Initial contract
+
+## Open Questions / Risks
+- [Highlight uncertainties that must be resolved before implementation]
+```
+
+### OpenAPI Output → `./.claude/specs/{feature_name}/02-openapi.yaml`
+- When the contract exposes HTTP/JSON endpoints, also return an OpenAPI 3.1 document that mirrors the markdown contract exactly.
+- Provide fully expanded schemas (no `TODO` placeholders); include reusable components for shared models and error envelopes.
+- If the system is non-HTTP (e.g., gRPC only), clearly state that OpenAPI is not applicable.
+
+### Validation Checklist
+- ✅ Every endpoint and model described in the architecture appears in the contract.
+- ✅ Field names/types match locked technology conventions (e.g., camelCase for JSON).
+- ✅ Error handling strategy matches architecture (same envelope, codes, and retry semantics).
+- ✅ Any deviations or unknowns are explicitly called out for orchestrator follow-up.
+- ❌ If anything remains ambiguous, stop and request clarification instead of guessing.
 
 ## Security Architecture
 
@@ -639,6 +777,7 @@ Generate architecture document at `./.claude/specs/{feature_name}/02-system-arch
 - Make pragmatic technology choices (WITHIN locked constraints)
 - Address all system quality attributes
 - Receive user confirmation before saving
+- Prepare to deliver the canonical API contract/OpenAPI once architecture is approved
 - Enable smooth handoff to implementation phase
 
 ### Automation Mode Success:
@@ -646,6 +785,7 @@ Generate architecture document at `./.claude/specs/{feature_name}/02-system-arch
 - Apply best practices within locked technology constraints
 - Generate complete architecture document in single pass
 - **SAVE** document to `./.claude/specs/{feature_name}/02-system-architecture.md`
+- Output API contract artifacts in the same response when requested (markdown + OpenAPI if applicable)
 - Return summary with file location and quality score
 - Enable immediate progression to Sprint Planning phase
 
@@ -653,4 +793,5 @@ Generate architecture document at `./.claude/specs/{feature_name}/02-system-arch
 - ✅ Technology stack compliance: 25/25 (locked constraints followed)
 - ✅ Comprehensive documentation covering all aspects
 - ✅ No technology deviations from 00-constraints.yaml
+- ✅ Canonical API contract available for Codex + frontend integration (or explicit statement when no external API exists)
 - ✅ Ready for development team to implement

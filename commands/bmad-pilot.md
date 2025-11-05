@@ -113,7 +113,7 @@ Begin product requirements gathering process with PO agent for: [$ARGUMENTS]
 Launch Architect agent with PRD and repository context for technical design.
 
 ### 🛑 CRITICAL STOP POINT: User Approval Gate #2 🛑
-**IMPORTANT**: After achieving 90+ quality score for architecture, you MUST STOP and wait for explicit user approval before proceeding to Phase 3.
+**IMPORTANT**: After achieving 90+ architecture quality score, you MUST STOP, obtain explicit user approval, and complete the API contract handoff before proceeding to Phase 3.
 
 ### Phase 3-5: Orchestrated Execution (After Architecture Approval)
 Proceed with orchestrated phases, introducing an approval gate for sprint planning before development.
@@ -516,6 +516,45 @@ Only after user confirmation:
 - Log a status line such as `✅ Architecture saved: {chars} chars (~{tokens} tokens), {direct|chunked} write, {chunks} chunks`
 - Do **not** route the full architecture document back through the architect agent solely for saving
 
+#### 1f. Generate & Save API Contract (MANDATORY cross-team bridge)
+Immediately after the architecture document is persisted, request the architect to deliver the canonical API contract that downstream phases will enforce.
+
+```
+Use Task tool with bmad-architect agent:
+
+PRD Path: ./.claude/specs/{feature_name}/01-product-requirements.md
+Architecture Path: ./.claude/specs/{feature_name}/02-system-architecture.md
+Technology Constraints Path: ./.claude/specs/{feature_name}/00-constraints.yaml
+
+Task: Produce the final API contract for this feature. This contract will be treated as the single source of truth for Codex backend generation and frontend integration.
+
+Output requirements:
+1. Provide a markdown contract ready to save to `./.claude/specs/{feature_name}/02-api-contract.md`. Include:
+   - Overview & version metadata (feature name, date, architect)
+   - Authentication & headers requirements
+   - Endpoint inventory table (method, path, summary, auth, idempotency)
+   - Detailed endpoint specs (request schema, response schema, status codes, error envelopes, side effects)
+   - Shared data models (fields, types, nullability, validation rules)
+   - Event/Webhook payloads if applicable
+   - Contract change log & open issues
+2. If HTTP/JSON endpoints exist, also emit an OpenAPI 3.1 YAML document suitable for saving to `./.claude/specs/{feature_name}/02-openapi.yaml`. Keep it canonical (no placeholders, fully expanded schemas).
+3. Clearly label each artifact in separate fenced code blocks using ` ```markdown` for the contract and ` ```yaml` (or `json`) for OpenAPI.
+4. Highlight any areas still pending clarification so we can block backend work until resolved.
+
+Constraints:
+- Stay 100% aligned with locked technology stack.
+- Reflect every PRD requirement and architectural decision.
+- If no external API is required, output a minimal contract that explicitly states "No external API surface" and explain how frontend communicates with backend.
+```
+
+After receiving the response:
+1. Validate that an API contract markdown block was returned (non-empty, covers all endpoints the architecture introduced). If missing or incomplete → send the architect back for correction.
+2. Save the markdown artifact to `./.claude/specs/{feature_name}/02-api-contract.md` (same write rules as above).
+3. If an OpenAPI artifact is provided, save it to `./.claude/specs/{feature_name}/02-openapi.yaml`.
+4. Confirm both files exist and contain the expected sections. If validation fails, re-run the architect step until it succeeds.
+5. Summarize status (e.g., `✅ API contract saved (+openapi)`).
+6. **Do NOT proceed to sprint planning or Codex until the contract is successfully saved.**
+
 ### 2. Orchestrator-Managed Refinement
 - Orchestrator manages all user interactions
 - Architect agent provides design and questions
@@ -530,8 +569,8 @@ After achieving 90+ architecture quality score:
 2. Display key design decisions and technology stack
 3. Ask explicitly: **"系统架构设计完成（{score}/100分）。是否开始实施阶段？(回复 'yes' 开始实施，'no' 继续优化架构)"**
 4. **WAIT for user response**
-5. **Only proceed if user responds with**: "yes", "是", "确认", "开始", or similar affirmative
-6. **If user says no**: Return to Architect refinement phase
+5. **If user says no**: Return to Architect refinement phase
+6. **If user approves**: Confirm Step 1f completed successfully (`02-api-contract.md` exists, optional `02-openapi.yaml` saved). If contract is missing or incomplete, pause implementation, rerun Step 1f, and resolve outstanding issues before proceeding.
 
 ## Phase 3-5: Implementation
 
@@ -607,10 +646,14 @@ Only after user confirmation:
      - `./.claude/specs/{feature_name}/00-constraints.yaml`
      - `./.claude/specs/{feature_name}/01-product-requirements.md`
      - `./.claude/specs/{feature_name}/02-system-architecture.md`
+     - `./.claude/specs/{feature_name}/02-api-contract.md` (canonical contract)
+     - `./.claude/specs/{feature_name}/02-openapi.yaml` (if the architect produced one)
      - `./.claude/specs/{feature_name}/03-sprint-plan.md`
    - List required backend files, data models, APIs, and known risks.
 2. **Build Codex Prompt**
    - Use template with sections: `Summary`, `Locked Tech Stack`, `Existing Context`, `Files to Update/Create`, `Acceptance Tests`, `Open Questions`.
+   - Insert a dedicated section `API CONTRACT (SOURCE OF TRUTH — DO NOT DEVIATE)` containing the full contents of `./.claude/specs/{feature_name}/02-api-contract.md`. If `02-openapi.yaml` exists, attach it using `@./.claude/specs/{feature_name}/02-openapi.yaml` and reference it explicitly.
+   - State in the prompt that Codex MUST match this contract exactly (paths, methods, payload shapes, error envelopes). If Codex identifies any conflict or missing definition, it must stop and return questions instead of inventing new contracts.
    - Explicitly restate that **Codex must implement all backend/API/database logic** and produce runnable code + tests.
    - Attach critical repository context via `@path/to/file` entries (trim to relevant sections; note any omissions).
    - Require Codex to capture change summary (`git status --short`, `git diff --stat`, per-file notes) and include it in implementation.md + codex-output.json.
@@ -623,11 +666,13 @@ Only after user confirmation:
 5. **Validate Output**
    - Confirm referenced files exist and compile/lint if applicable.
    - Review codex-output.json `change_summary` alongside implementation.md Change Summary; ensure they cover every added/modified file with rationale.
+   - Cross-check every implemented endpoint, payload, and error path against `02-api-contract.md` (and OpenAPI if present). If Codex diverged, STOP, capture the discrepancy, and either (a) rerun Codex with corrections or (b) route back to the architect to revise the contract and restart.
    - Cross-check that every `@file` attachment is reflected in Codex change summary or documented as read-only in implementation.md.
    - If backend artifacts are missing or broken → rerun Codex with fixes before moving on.
 6. **Gate Check**
    - ✅ `codex-backend.md` exists and documents the latest run
    - ✅ Backend code/tests from Codex are present in the repository
+   - ✅ Backend behavior matches the canonical API contract (no undocumented endpoints or fields)
    - ✅ Change summaries (implementation.md + codex-output.json) exist and look reasonable
    - ❌ If any check fails: DO NOT continue. Re-run Codex or fix issues first.
 
@@ -639,6 +684,8 @@ Repository Scan Path: ./.claude/specs/{feature_name}/00-repo-scan.md (may not ex
 🔴 Technology Constraints Path: ./.claude/specs/{feature_name}/00-constraints.yaml (ALWAYS exists)
 PRD Path: ./.claude/specs/{feature_name}/01-product-requirements.md
 Architecture Path: ./.claude/specs/{feature_name}/02-system-architecture.md
+API Contract Path: ./.claude/specs/{feature_name}/02-api-contract.md (MANDATORY)
+OpenAPI Path: ./.claude/specs/{feature_name}/02-openapi.yaml (if present)
 Sprint Plan Path: ./.claude/specs/{feature_name}/03-sprint-plan.md
 Codex Backend Log: ./.claude/specs/{feature_name}/codex-backend.md (MUST exist)
 Feature Name: {feature_name}
@@ -646,12 +693,13 @@ Working Directory: [Project root]
 
 Task: Integrate Codex backend output, implement frontend/glue code, and ensure end-to-end functionality.
 Instructions:
-1. **PRECHECK**: Abort immediately if codex-backend.md is missing or shows an older run than current task.
-2. Read constraints, PRD, architecture, sprint plan, and Codex log.
-3. Verify backend files already created by Codex; do NOT rewrite backend logic.
-4. Implement remaining work: wiring, UI, configuration, DevOps scripts, docs, non-backend utilities.
-5. Add/adjust tests needed for integration and frontend pieces.
-6. Report integration status per sprint and confirm backend sections reference Codex output.
+1. **PRECHECK**: Abort immediately if either `codex-backend.md` or `02-api-contract.md` is missing/stale.
+2. Read constraints, PRD, architecture, contract (and OpenAPI if provided), sprint plan, and Codex log.
+3. Generate or update `.claude/specs/{feature_name}/04-frontend/api-client.*` directly from the contract (use OpenAPI tooling when available; otherwise derive strongly typed client code manually). Warn and stop if the contract and Codex implementation diverge.
+4. Verify backend files already created by Codex; do NOT rewrite backend logic. Surface gaps to orchestrator for a new Codex run instead of patching manually.
+5. Implement remaining work: wiring, UI, configuration, DevOps scripts, docs, non-backend utilities.
+6. Add/adjust tests needed for integration and frontend pieces, ensuring API mocks align with the contract.
+7. Report integration status per sprint, referencing contract sections and confirming backend sections reference Codex output.
 ```
 
 ### Phase 4.5: Code Review (Automated)
@@ -662,6 +710,8 @@ Repository Scan Path: ./.claude/specs/{feature_name}/00-repo-scan.md (may not ex
 Technology Constraints Path: ./.claude/specs/{feature_name}/00-constraints.yaml (ALWAYS exists)
 PRD Path: ./.claude/specs/{feature_name}/01-product-requirements.md
 Architecture Path: ./.claude/specs/{feature_name}/02-system-architecture.md
+API Contract Path: ./.claude/specs/{feature_name}/02-api-contract.md
+OpenAPI Path: ./.claude/specs/{feature_name}/02-openapi.yaml (if present)
 Sprint Plan Path: ./.claude/specs/{feature_name}/03-sprint-plan.md
 Codex Backend Log: ./.claude/specs/{feature_name}/codex-backend.md (should be reviewed)
 Feature Name: {feature_name}
@@ -672,7 +722,7 @@ Task: Conduct independent code review
 Instructions:
 1. Read all specification documents from paths above (skip 00-repo-scan.md if it doesn't exist)
 2. Inspect codex-backend.md to confirm backend work came from Codex and matches repository state
-3. **VERIFY**: Implementation uses correct technology stack from constraints
+3. **VERIFY**: Implementation uses correct technology stack from constraints and adheres to the canonical API contract/OpenAPI
 4. Analyze implementation against requirements and architecture
 5. Generate structured review report
 6. Save report to ./.claude/specs/{feature_name}/04-dev-reviewed.md
@@ -687,6 +737,8 @@ Repository Scan Path: ./.claude/specs/{feature_name}/00-repo-scan.md (may not ex
 Technology Constraints Path: ./.claude/specs/{feature_name}/00-constraints.yaml (ALWAYS exists)
 PRD Path: ./.claude/specs/{feature_name}/01-product-requirements.md
 Architecture Path: ./.claude/specs/{feature_name}/02-system-architecture.md
+API Contract Path: ./.claude/specs/{feature_name}/02-api-contract.md
+OpenAPI Path: ./.claude/specs/{feature_name}/02-openapi.yaml (if provided)
 Sprint Plan Path: ./.claude/specs/{feature_name}/03-sprint-plan.md
 Review Report Path: ./.claude/specs/{feature_name}/04-dev-reviewed.md
 Codex Backend Log: ./.claude/specs/{feature_name}/codex-backend.md
@@ -698,11 +750,12 @@ Instructions:
 1. Read all specification documents from paths above (skip 00-repo-scan.md if it doesn't exist)
 2. Review implemented code from Phase 4
 3. Cross-check backend test coverage aligns with Codex output (codex-backend.md)
-4. **VERIFY**: Tests use correct technology stack and testing frameworks from constraints file
-5. Create comprehensive test suite validating all acceptance criteria
-6. Execute tests and report results
-7. Ensure quality standards are met
-8. Save test report to ./.claude/specs/{feature_name}/05-qa-report.md
+4. Ensure automated and manual tests reflect every endpoint/behavior defined in `02-api-contract.md` (and OpenAPI where available). Flag any gaps before proceeding.
+5. **VERIFY**: Tests use correct technology stack and testing frameworks from constraints file
+6. Create comprehensive test suite validating all acceptance criteria
+7. Execute tests and report results
+8. Ensure quality standards are met
+9. Save test report to ./.claude/specs/{feature_name}/05-qa-report.md
 ```
 
 ## Execution Flow Summary
@@ -724,15 +777,16 @@ Instructions:
 9. If approved → Start Architect interaction (Phase 2)
 10. Iterate until architecture quality ≥ 90
 11. 🛑 STOP: Request user approval for architecture
-12. If approved → Start Sprint Planning (SM) unless --direct-dev
-13. Iterate on sprint plan with user clarification
-14. 🛑 STOP: Request user approval for sprint plan
-15. If approved → Execute remaining phases:
+12. Run Step 1f to generate/save the API contract (and optional OpenAPI). Block further progress until `02-api-contract.md` exists and passes validation.
+13. If approved → Start Sprint Planning (SM) unless --direct-dev
+14. Iterate on sprint plan with user clarification
+15. 🛑 STOP: Request user approval for sprint plan
+16. If approved → Execute remaining phases:
     - **Codex Backend Call** (Phase 4) – orchestrator handles `mcp__codex_cli__ask_codex`
     - Development Integration (bmad-dev)
     - Code Review (Review)
     - Testing (QA) unless --skip-tests
-16. Report completion with deliverables summary
+17. Report completion with deliverables summary
 ```
 
 ## Output Structure
@@ -743,6 +797,8 @@ All outputs saved to `./.claude/specs/{feature_name}/`:
 00-constraints.yaml           # Technology constraints (Phase 0.2 - after user confirmation; ALWAYS created)
 01-product-requirements.md    # PRD from PO (Phase 1 - after approval)
 02-system-architecture.md     # Technical design from Architect (Phase 2 - after approval)
+02-api-contract.md            # Canonical API contract from Architect (Phase 2 - mandatory handoff)
+02-openapi.yaml               # Optional OpenAPI specification mirroring the contract
 03-sprint-plan.md             # Sprint plan from SM (Phase 3 - after approval; skipped if --direct-dev)
 codex-backend.md              # Prompt + response log for mandatory Codex backend run (Phase 4)
 04-dev-reviewed.md            # Code review report from Review agent (Phase 4.5 - after Dev phase)
@@ -752,8 +808,9 @@ codex-backend.md              # Prompt + response log for mandatory Codex backen
 **File Generation Order (CRITICAL):**
 1. **00-repo-scan.md** - Created FIRST during repository scan (skipped if --skip-scan)
 2. **00-constraints.yaml** - Created SECOND after user confirms technology stack (ALWAYS created)
-3. **codex-backend.md** - Created when Codex finishes backend implementation (Phase 4) before any integration work
-4. All subsequent phases reference constraints file; repo scan file is referenced only if it exists
+3. **02-api-contract.md** (+ optional **02-openapi.yaml**) - Created immediately after architecture is approved; required before any backend or frontend work
+4. **codex-backend.md** - Created when Codex finishes backend implementation (Phase 4) before any integration work
+5. All subsequent phases reference constraints file; repo scan file is referenced only if it exists
 
 **Impact of --skip-scan:**
 - ❌ `00-repo-scan.md` NOT created
@@ -792,6 +849,7 @@ codex-backend.md              # Prompt + response log for mandatory Codex backen
 - **Technology Stack Confirmed**: User explicitly approved technology constraints (00-constraints.yaml created)
 - **Clear Requirements**: PRD with 90+ quality score and user approval
 - **Solid Architecture**: Design with 90+ quality score and user approval
+- **Canonical API Contract**: Architect-delivered contract/OpenAPI saved and used as the single source of truth for backend + frontend integration
 - **Complete Planning**: Detailed sprint plan with all stories estimated
 - **Working Implementation**: Code fully implements PRD requirements per architecture
 - **Quality Assurance**: All acceptance criteria validated (unless skipped)
@@ -803,6 +861,7 @@ codex-backend.md              # Prompt + response log for mandatory Codex backen
 - **🔴 Handle --skip-scan gracefully** - Detect missing 00-repo-scan.md, adjust messaging, rely on user input only
 - **Phase 1 starts AFTER constraints locked** - PO begins only when technology is confirmed
 - **Never skip approval gates** - User must explicitly approve: Technology Stack, PRD, Architecture, and Sprint Plan
+- **🔴 Architecture → Implementation bridge** - Generate/save `02-api-contract.md` (and optional OpenAPI) immediately after architecture approval; block Codex/Dev until it exists
 - **Pilot is orchestrator-only** - It coordinates and confirms; all task execution and file saving occur in agents via the Task tool
 - **Quality over speed** - Ensure clarity before moving forward
 - **Context continuity** - Each agent receives repository context (if available) and locked constraints

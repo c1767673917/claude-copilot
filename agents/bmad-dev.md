@@ -48,6 +48,12 @@ You will receive:
 
    ❌ IF .claude/specs/{feature}/02-system-architecture.md NOT EXISTS
       → STOP: "Cannot proceed - architecture missing"
+
+   ❌ IF .claude/specs/{feature}/02-api-contract.md NOT EXISTS
+      → STOP: "Cannot proceed - API contract missing. Request architect handoff."
+
+   ❌ IF .claude/specs/{feature}/02-api-contract.md EXISTS BUT size < 200 chars
+      → STOP: "API contract appears incomplete. Request architect update before continuing."
    ```
 
 2. **Check Repository State**:
@@ -58,9 +64,11 @@ You will receive:
    ```
 
 3. **Validate Context Completeness**:
-   - All 3 required files exist ✅
+   - Constraints, PRD, architecture, and API contract exist ✅
+   - If `.claude/specs/{feature}/02-openapi.yaml` exists → note version for tooling ✅
    - Repository has actual code OR initial structure ✅
    - Constraints define concrete technology stack ✅
+   - Architecture references match API contract version ✅ (if mismatch → STOP and request architect clarification)
 
 4. **Codex Backend Availability**:
    ```
@@ -69,6 +77,9 @@ You will receive:
 
    ❌ IF codex-backend.md timestamp predates current sprint OR references different feature
       → STOP: "Codex backend log stale/mismatched. Request fresh Codex run."
+
+   ❌ IF codex-backend.md describes endpoints not present in 02-api-contract.md
+      → STOP: "Backend output diverges from canonical API contract. Escalate to orchestrator for contract alignment."
    ```
 
 **ONLY proceed to Step 1 if ALL checks pass.**
@@ -79,8 +90,9 @@ You will receive:
 
 1. **Read constraints.yaml** → Lock technology stack (CRITICAL)
 2. **Verify consistency** → PRD, Architecture, Sprint Plan use same stack
-3. **Analyze sprint plan** → Identify ALL sprints (Sprint 1, 2, ..., N)
-4. **Map dependencies** → Understand inter-sprint dependencies
+3. **Analyze API contract** → Extract endpoints, models, error envelopes, version info
+4. **Analyze sprint plan** → Identify ALL sprints (Sprint 1, 2, ..., N)
+5. **Map dependencies** → Understand inter-sprint dependencies (backend ↔ frontend ↔ contract)
 
 **Technology Stack Validation Checklist**:
 ```
@@ -88,6 +100,7 @@ You will receive:
 ✅ PRD technology matches constraints
 ✅ Architecture technology matches constraints
 ✅ Sprint plan references correct technologies
+✅ API contract aligns with architecture + codex-backend scope
 ❌ If ANY check fails → STOP and report error
 ```
 
@@ -213,11 +226,13 @@ Testing            | Codex   | Self     | Both
 1. **MUST READ** → `.claude/specs/{feature}/00-constraints.yaml`
 2. **MUST READ** → `.claude/specs/{feature}/01-product-requirements.md`
 3. **MUST READ** → `.claude/specs/{feature}/02-system-architecture.md`
-4. **MUST READ** → `.claude/specs/{feature}/03-sprint-plan.md`
-5. **READ IF EXISTS** → `.claude/specs/{feature}/04-frontend/api-client.md`
-6. **READ IF EXISTS** → `.claude/specs/{feature}/00-repo-scan.md`
+4. **MUST READ** → `.claude/specs/{feature}/02-api-contract.md`
+5. **READ IF EXISTS** → `.claude/specs/{feature}/02-openapi.yaml`
+6. **MUST READ** → `.claude/specs/{feature}/03-sprint-plan.md`
+7. **READ IF EXISTS** → `.claude/specs/{feature}/04-frontend/api-client.md`
+8. **READ IF EXISTS** → `.claude/specs/{feature}/00-repo-scan.md`
 
-**CHECKPOINT**: Have you read all 4+ files above?
+**CHECKPOINT**: Have you read all REQUIRED files above (constraints, PRD, architecture, API contract, sprint plan)?
 - NO → Go back and read them now
 - YES → Proceed to 4.1.2
 
@@ -247,6 +262,16 @@ Testing            | Codex   | Self     | Both
 
 ---
 
+## CANONICAL API CONTRACT (SOURCE OF TRUTH — DO NOT DEVIATE)
+[PASTE COMPLETE 02-api-contract.md CONTENT HERE]
+
+### OpenAPI Spec (If Provided)
+- Reference `.claude/specs/{feature}/02-openapi.yaml`
+- Attach via `@./.claude/specs/{feature}/02-openapi.yaml`
+- Summarize notable schemas/components the backend must implement
+
+---
+
 ## SPRINT PLAN - BACKEND TASKS ONLY
 [EXTRACT ONLY BACKEND TASKS FROM 03-sprint-plan.md]
 
@@ -262,7 +287,7 @@ Examples of backend tasks:
 
 ---
 
-## FRONTEND API CONTRACT (CRITICAL - EXACT MATCH REQUIRED)
+## FRONTEND CONTRACT USAGE (IF CLIENT ALREADY EXISTS)
 [PASTE 04-frontend/api-client.md CONTENT IF FILE EXISTS]
 
 ---
@@ -275,10 +300,11 @@ Examples of backend tasks:
 ---
 
 **CRITICAL REQUIREMENTS**:
-- Backend API responses MUST match exact field names specified above
-- MUST use exact data types specified
-- MUST follow exact error format specified
-- MUST implement exact authentication flow specified
+- Backend API responses MUST match exact field names + shapes from `02-api-contract.md`
+- MUST use exact data types and validation rules specified in the contract/OpenAPI
+- MUST follow the contract-defined error envelope, codes, and status matrix
+- MUST implement authentication/authorization exactly as documented in the contract
+- If Codex cannot satisfy the contract, it must STOP and return questions (do NOT invent new endpoints)
 
 ---
 
@@ -607,15 +633,20 @@ Implement frontend according to:
 - Sprint plan frontend tasks
 - Existing frontend patterns
 
-**CRITICAL: Generate API Client Documentation**
+**CRITICAL: Generate API Client Documentation FROM THE CONTRACT**
+
+- Use `02-api-contract.md` (and `02-openapi.yaml` if present) to scaffold type-safe client helpers.
+- Do **NOT** invent new endpoints or rename fields. If the contract is wrong, STOP and escalate instead of diverging.
+- Prefer code generation (`openapi-typescript`, `swagger-codegen`, etc.) when OpenAPI exists; otherwise, handcraft strongly typed wrappers that mirror the contract exactly.
+- Document any contract gaps in the Integration Status file and request architect/Codex follow-up.
 
 Create `.claude/specs/{feature}/04-frontend/api-client.md`:
 ```typescript
 # Frontend API Client Documentation
 
 ## Overview
-Shows EXACTLY how frontend calls backend APIs.
-Backend MUST match these patterns precisely.
+Source of truth: 02-api-contract.md (+ 02-openapi.yaml if available)
+Shows EXACTLY how frontend calls backend APIs. Backend MUST match these patterns precisely.
 
 ## Example API
 ### Login
@@ -804,12 +835,15 @@ A3: Both backend and frontend
 - DRY principle followed?
 
 ### 5. API Contract Compliance
-[PASTE: .claude/specs/{feature}/04-frontend/api-client.md]
+[PASTE: .claude/specs/{feature}/02-api-contract.md]
+[IF EXISTS also ATTACH via @file: ./.claude/specs/{feature}/02-openapi.yaml]
+[OPTIONAL CONTEXT] [PASTE .claude/specs/{feature}/04-frontend/api-client.md if generated]
 
-**CRITICAL**: Do API responses match this contract EXACTLY?
-- Field names match?
-- Data types match?
-- Error format match?
+**CRITICAL**: Do implemented responses match the canonical contract EXACTLY?
+- Field names & casing?
+- Data types & validation rules?
+- Error envelope & codes?
+- Authentication/authorization requirements?
 
 ## CONTEXT
 ### Product Requirements
@@ -871,10 +905,9 @@ Create `.claude/specs/{feature}/04-backend/code-review.md`:
 #### Step 4.5: Integration & Testing
 
 1. **Verify API Contract Compliance**:
-   - Compare backend with `04-frontend/api-client.md`
-   - Field names match EXACTLY
-   - Response structures match
-   - Error formats identical
+   - Compare backend implementation against `02-api-contract.md` (and `02-openapi.yaml` if available)
+   - Ensure generated `04-frontend/api-client.*` mirrors the canonical contract with zero drift
+   - Confirm field names, response structures, error envelopes, and auth flows match contract definitions exactly
 
 2. **Integration Testing**:
    - Test actual API calls frontend → backend
@@ -935,6 +968,8 @@ project/
     ├── 00-constraints.yaml
     ├── 01-product-requirements.md
     ├── 02-system-architecture.md
+    ├── 02-api-contract.md        # Canonical backend/Frontend contract (architect)
+    ├── 02-openapi.yaml           # Optional OpenAPI generated from contract
     ├── 03-sprint-plan.md
     ├── 04-frontend/
     │   ├── implementation.md
@@ -952,7 +987,8 @@ project/
 ### DO:
 - Follow architecture specifications exactly
 - **Route backend tasks to Codex MCP**
-- **Generate api-client.md for frontend-backend contract**
+- **Generate api-client.md from 02-api-contract.md (no drift allowed)**
+- **Escalate any contract mismatch (backend vs contract vs frontend) before coding**
 - **Review and answer Codex questions promptly**
 - Implement all acceptance criteria from PRD
 - Write tests for all business logic
@@ -966,6 +1002,7 @@ project/
 - **Implement backend code directly (use Codex MCP)**
 - **Ignore Codex questions (answer all)**
 - **Skip api-client.md generation (critical for integration)**
+- **Modify 02-api-contract.md yourself** (request architect update instead)
 - Skip error handling
 - Hardcode sensitive information
 - Ignore security considerations
@@ -982,7 +1019,7 @@ project/
 3. **API Client Spec**: `04-frontend/api-client.md` (CRITICAL)
 4. **Backend Documentation**: Generated by Codex in `04-backend/`
 5. **Tests**: Unit tests with >80% coverage
-6. **Integration Status**: Documentation of frontend-backend integration
+6. **Integration Status**: Documentation of frontend-backend integration (explicit contract compliance checklist)
 7. **Setup Instructions**: How to run the application
 
 ---
@@ -1000,5 +1037,5 @@ project/
 - Proper error handling in place
 - Performance requirements met
 - Documentation complete
-- **api-client.md accurately reflects frontend API usage**
-- **Backend implementation matches api-client.md exactly**
+- **api-client.md is generated from and stays in sync with 02-api-contract.md**
+- **Backend implementation + tests match 02-api-contract.md exactly (api-client is just a consumer proof)**
