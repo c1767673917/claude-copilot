@@ -68,6 +68,7 @@ You adhere to core software engineering principles like KISS (Keep It Simple, St
 
 ### Input Files
 - **Technical Specification**: Read from `./.claude/specs/{feature_name}/requirements-spec.md`
+- **Codex Backend Log**: Read from `./.claude/specs/{feature_name}/codex-backend.md`
 - **Implementation Code**: Analyze existing project code using available tools
 
 ### Output Files
@@ -77,6 +78,7 @@ You adhere to core software engineering principles like KISS (Keep It Simple, St
 ```markdown
 ## 1. Artifact Discovery and Analysis
 - Read `./.claude/specs/{feature_name}/requirements-spec.md` to understand technical specifications
+- Cross-check `./.claude/specs/{feature_name}/codex-backend.md` to ensure backend work matches repository state
 - Compare implementation against specification requirements
 - Verify all specified features are working correctly
 - Check that API endpoints return expected responses
@@ -90,6 +92,7 @@ You adhere to core software engineering principles like KISS (Keep It Simple, St
 - Are existing tests still passing?
 - Is the code following established patterns and conventions?
 - Are configuration changes properly handled?
+- Is Codex-owned backend code left intact (no manual rewrites)?
 ```
 
 ### Phase 3: Quality Review

@@ -598,33 +598,55 @@ Only after user confirmation:
 - Optionally read back the saved plan to verify the contents
 - Log a status line such as `✅ Sprint plan saved: {chars} chars (~{tokens} tokens), {direct|chunked} write, {chunks} chunks`
 
-### Phase 4: Development Implementation (Automated)
+### Phase 4: Backend Implementation (Codex MCP - **MANDATORY**)
+
+**STOP and run this phase yourself before launching any development agent.**
+
+1. **Assemble Full Context**
+   - Read and summarize:
+     - `./.claude/specs/{feature_name}/00-constraints.yaml`
+     - `./.claude/specs/{feature_name}/01-product-requirements.md`
+     - `./.claude/specs/{feature_name}/02-system-architecture.md`
+     - `./.claude/specs/{feature_name}/03-sprint-plan.md`
+   - List required backend files, data models, APIs, and known risks.
+2. **Build Codex Prompt**
+   - Use template with sections: `Summary`, `Locked Tech Stack`, `Existing Context`, `Files to Update/Create`, `Acceptance Tests`, `Open Questions`.
+   - Explicitly restate that **Codex must implement all backend/API/database logic** and produce runnable code + tests.
+3. **Execute Codex Call**
+   - Run `mcp__codex_cli__ask_codex` with the assembled prompt (no skipping).
+   - If Codex asks follow-up questions, answer them and continue the same session until backend work is complete.
+4. **Persist Evidence**
+   - Save the final prompt, Codex responses, and follow-up answers to `./.claude/specs/{feature_name}/codex-backend.md` (append if multiple runs).
+   - Record resulting file paths / commands Codex executed.
+5. **Validate Output**
+   - Confirm referenced files exist and compile/lint if applicable.
+   - If backend artifacts are missing or broken → rerun Codex with fixes before moving on.
+6. **Gate Check**
+   - ✅ `codex-backend.md` exists and documents the latest run
+   - ✅ Backend code/tests from Codex are present in the repository
+   - ❌ If either check fails: DO NOT continue. Re-run Codex or fix issues first.
+
+### Phase 4.2: Frontend & Integration (Automated via bmad-dev)
 ```
 Use Task tool with bmad-dev agent:
 
 Repository Scan Path: ./.claude/specs/{feature_name}/00-repo-scan.md (may not exist if --skip-scan)
-🔴 **Technology Constraints Path: ./.claude/specs/{feature_name}/00-constraints.yaml** (ALWAYS exists)
+🔴 Technology Constraints Path: ./.claude/specs/{feature_name}/00-constraints.yaml (ALWAYS exists)
 PRD Path: ./.claude/specs/{feature_name}/01-product-requirements.md
 Architecture Path: ./.claude/specs/{feature_name}/02-system-architecture.md
 Sprint Plan Path: ./.claude/specs/{feature_name}/03-sprint-plan.md
+Codex Backend Log: ./.claude/specs/{feature_name}/codex-backend.md (MUST exist)
 Feature Name: {feature_name}
 Working Directory: [Project root]
 
-🔴 **MANDATORY TECHNOLOGY STACK:**
-[Read from 00-constraints.yaml and display]
-Scan Skipped: [Read scan_skipped from 00-constraints.yaml]
-
-Task: Implement ALL features across ALL sprints according to specifications.
+Task: Integrate Codex backend output, implement frontend/glue code, and ensure end-to-end functionality.
 Instructions:
-1. **FIRST**: Read and validate technology constraints from constraints file
-2. **CHECK**: If scan_skipped=true OR 00-repo-scan.md doesn't exist, implement as greenfield project (no existing code integration)
-3. **VERIFY**: Technology stack in PRD/Architecture matches constraints
-4. Read PRD, Architecture, and Sprint Plan from specified paths
-5. Identify and implement ALL sprints sequentially (Sprint 1, Sprint 2, etc.)
-6. **ENFORCE**: Use ONLY the locked technology stack throughout implementation
-7. Complete ALL tasks across ALL sprints before finishing
-8. Create production-ready code with tests for entire feature set
-9. Report implementation status for each sprint and overall completion
+1. **PRECHECK**: Abort immediately if codex-backend.md is missing or shows an older run than current task.
+2. Read constraints, PRD, architecture, sprint plan, and Codex log.
+3. Verify backend files already created by Codex; do NOT rewrite backend logic.
+4. Implement remaining work: wiring, UI, configuration, DevOps scripts, docs, non-backend utilities.
+5. Add/adjust tests needed for integration and frontend pieces.
+6. Report integration status per sprint and confirm backend sections reference Codex output.
 ```
 
 ### Phase 4.5: Code Review (Automated)
@@ -636,6 +658,7 @@ Technology Constraints Path: ./.claude/specs/{feature_name}/00-constraints.yaml 
 PRD Path: ./.claude/specs/{feature_name}/01-product-requirements.md
 Architecture Path: ./.claude/specs/{feature_name}/02-system-architecture.md
 Sprint Plan Path: ./.claude/specs/{feature_name}/03-sprint-plan.md
+Codex Backend Log: ./.claude/specs/{feature_name}/codex-backend.md (should be reviewed)
 Feature Name: {feature_name}
 Working Directory: [Project root]
 Review Iteration: [Current iteration number, starting from 1]
@@ -643,11 +666,12 @@ Review Iteration: [Current iteration number, starting from 1]
 Task: Conduct independent code review
 Instructions:
 1. Read all specification documents from paths above (skip 00-repo-scan.md if it doesn't exist)
-2. **VERIFY**: Implementation uses correct technology stack from constraints
-3. Analyze implementation against requirements and architecture
-4. Generate structured review report
-5. Save report to ./.claude/specs/{feature_name}/04-dev-reviewed.md
-6. Return review status (Pass/Pass with Risk/Fail)
+2. Inspect codex-backend.md to confirm backend work came from Codex and matches repository state
+3. **VERIFY**: Implementation uses correct technology stack from constraints
+4. Analyze implementation against requirements and architecture
+5. Generate structured review report
+6. Save report to ./.claude/specs/{feature_name}/04-dev-reviewed.md
+7. Return review status (Pass/Pass with Risk/Fail)
 ```
 
 ### Phase 5: Quality Assurance (Automated - Unless --skip-tests)
@@ -660,6 +684,7 @@ PRD Path: ./.claude/specs/{feature_name}/01-product-requirements.md
 Architecture Path: ./.claude/specs/{feature_name}/02-system-architecture.md
 Sprint Plan Path: ./.claude/specs/{feature_name}/03-sprint-plan.md
 Review Report Path: ./.claude/specs/{feature_name}/04-dev-reviewed.md
+Codex Backend Log: ./.claude/specs/{feature_name}/codex-backend.md
 Feature Name: {feature_name}
 Working Directory: [Project root]
 
@@ -667,11 +692,12 @@ Task: Create and execute comprehensive test suite.
 Instructions:
 1. Read all specification documents from paths above (skip 00-repo-scan.md if it doesn't exist)
 2. Review implemented code from Phase 4
-3. **VERIFY**: Tests use correct technology stack and testing frameworks from constraints file
-4. Create comprehensive test suite validating all acceptance criteria
-5. Execute tests and report results
-6. Ensure quality standards are met
-7. Save test report to ./.claude/specs/{feature_name}/05-qa-report.md
+3. Cross-check backend test coverage aligns with Codex output (codex-backend.md)
+4. **VERIFY**: Tests use correct technology stack and testing frameworks from constraints file
+5. Create comprehensive test suite validating all acceptance criteria
+6. Execute tests and report results
+7. Ensure quality standards are met
+8. Save test report to ./.claude/specs/{feature_name}/05-qa-report.md
 ```
 
 ## Execution Flow Summary
@@ -697,7 +723,8 @@ Instructions:
 13. Iterate on sprint plan with user clarification
 14. 🛑 STOP: Request user approval for sprint plan
 15. If approved → Execute remaining phases:
-    - Development (Dev)
+    - **Codex Backend Call** (Phase 4) – orchestrator handles `mcp__codex_cli__ask_codex`
+    - Development Integration (bmad-dev)
     - Code Review (Review)
     - Testing (QA) unless --skip-tests
 16. Report completion with deliverables summary
@@ -712,6 +739,7 @@ All outputs saved to `./.claude/specs/{feature_name}/`:
 01-product-requirements.md    # PRD from PO (Phase 1 - after approval)
 02-system-architecture.md     # Technical design from Architect (Phase 2 - after approval)
 03-sprint-plan.md             # Sprint plan from SM (Phase 3 - after approval; skipped if --direct-dev)
+codex-backend.md              # Prompt + response log for mandatory Codex backend run (Phase 4)
 04-dev-reviewed.md            # Code review report from Review agent (Phase 4.5 - after Dev phase)
 05-qa-report.md               # QA test report (Phase 5 - unless --skip-tests)
 ```
@@ -719,7 +747,8 @@ All outputs saved to `./.claude/specs/{feature_name}/`:
 **File Generation Order (CRITICAL):**
 1. **00-repo-scan.md** - Created FIRST during repository scan (skipped if --skip-scan)
 2. **00-constraints.yaml** - Created SECOND after user confirms technology stack (ALWAYS created)
-3. All subsequent phases reference constraints file; repo scan file is referenced only if it exists
+3. **codex-backend.md** - Created when Codex finishes backend implementation (Phase 4) before any integration work
+4. All subsequent phases reference constraints file; repo scan file is referenced only if it exists
 
 **Impact of --skip-scan:**
 - ❌ `00-repo-scan.md` NOT created

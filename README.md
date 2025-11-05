@@ -37,6 +37,7 @@ graph LR
 - **🤖 6 Specialized Agents**: PO, Architect, SM, Dev, Review, QA
 - **📊 Quality Gates**: 90% thresholds with automatic optimization
 - **✅ Approval Points**: User confirmation at critical phases
+- **🧠 Codex-Enforced Backend**: All backend/API/database work is routed through Codex MCP with saved transcripts
 - **📁 Persistent Artifacts**: All documents saved to `./.claude/specs/`
 - **🔄 Iterative Refinement**: Automatic improvement until quality met
 
@@ -104,6 +105,7 @@ Each BMAD run creates structured documentation:
 ├── 01-product-requirements.md  # PRD with business goals
 ├── 02-system-architecture.md   # Technical design
 ├── 03-sprint-plan.md           # Sprint tasks
+├── codex-backend.md            # Prompt + response log for Codex backend runs (NEW)
 ├── 04-dev-reviewed.md          # Code review report (NEW v3.1)
 └── 05-qa-report.md            # Test results
 ```

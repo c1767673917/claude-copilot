@@ -133,18 +133,44 @@ After achieving 90+ quality score:
 
 **ONLY execute this phase after receiving explicit user approval**
 
-Execute the following sub-agent chain:
+### Phase 2A: Codex Backend Implementation (MANDATORY BEFORE AGENTS)
+1. **Gather Context**
+   - `./.claude/specs/{feature_name}/00-repository-context.md` (if it exists)
+   - `./.claude/specs/{feature_name}/requirements-confirm.md`
+   - `./.claude/specs/{feature_name}/requirements-spec.md`
+2. **Build Prompt**
+   - Include sections for Summary, Locked Tech Stack (if specified), Existing Code References, Files to Modify/Create, Acceptance Criteria, Edge Cases.
+   - Explicitly state: *"Codex must implement every backend/API/database change. The local agent will only handle frontend/glue tasks."*
+3. **Run Codex**
+   - Execute `mcp__codex_cli__ask_codex` with the prompt.
+   - Answer follow-up questions until Codex produces complete backend code + tests.
+4. **Persist Evidence**
+   - Save prompt, Codex output, and QA notes to `./.claude/specs/{feature_name}/codex-backend.md`.
+   - Apply Codex's changes to the repository (files, migrations, tests).
+5. **Validate**
+   - Ensure referenced files exist/compile.
+   - Re-run Codex if backend pieces are incomplete or broken.
+6. **Gate**
+   - Do **NOT** launch any sub-agent while `codex-backend.md` is missing or stale.
+
+### Phase 2B: Integration & Review Chain
+
+After Codex finishes backend work, run the following chain:
 
 ```
-First use the requirements-generate sub agent to create implementation-ready technical specifications for confirmed requirements with repository context, then use the requirements-code sub agent to implement the functionality based on specifications following existing patterns, then use the requirements-review sub agent to evaluate code quality with practical scoring, then if score ≥90% proceed to Testing Decision Gate: if --skip-tests option was provided complete workflow, otherwise ask user for testing preference with smart recommendations, otherwise use the requirements-code sub agent again to address review feedback and repeat the review cycle.
+1) requirements-code agent → Reads requirements-spec + codex-backend.md, wires frontend/config/glue code, and documents integration status.
+2) requirements-review agent → Validates implementation quality (must read codex-backend.md) and returns score.
+3) If review score < 90% → Loop back to requirements-code for fixes referencing review feedback.
+4) If score ≥ 90% → Enter Testing Decision Gate.
 ```
 
 ### Sub-Agent Context Passing
 Each sub-agent receives:
 - Repository scan results (if available)
 - Existing code patterns and conventions
-- Technology stack constraints
+- Technology/stack constraints from requirements-confirm/spec
 - Integration requirements
+- `./.claude/specs/{feature_name}/codex-backend.md`
 
 ## Testing Decision Gate
 
@@ -236,6 +262,7 @@ All outputs saved to `./.claude/specs/{feature_name}/`:
 00-repository-context.md      # Repository scan results (if not skipped)
 requirements-confirm.md        # Requirements confirmation process
 requirements-spec.md          # Technical specifications
+codex-backend.md              # Prompt + response log for mandatory Codex backend implementation
 ```
 
 ## Success Criteria

@@ -37,6 +37,7 @@ graph LR
 - **🤖 6个专业智能体**：PO、Architect、SM、Dev、Review、QA
 - **📊 质量门控**：90% 阈值自动优化
 - **✅ 确认节点**：关键阶段用户确认
+- **🧠 Codex 强制后端**：所有后端/API/数据库开发统一交给 Codex MCP 并记录调用
 - **📁 持久化产物**：所有文档保存至 `./.claude/specs/`
 - **🔄 迭代优化**：自动改进直至质量达标
 
@@ -103,6 +104,7 @@ make deploy-all          # 部署所有命令和智能体
 ├── 01-product-requirements.md  # PRD 及业务目标
 ├── 02-system-architecture.md   # 技术设计
 ├── 03-sprint-plan.md           # 冲刺任务
+├── codex-backend.md            # Codex 后端调用记录（新增强制）
 ├── 04-dev-reviewed.md          # 代码审查报告（v3.1 新增）
 └── 05-qa-report.md            # 测试结果
 ```

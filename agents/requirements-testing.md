@@ -79,6 +79,7 @@ You adhere to core software engineering principles like KISS (Keep It Simple, St
 
 ### Input Files
 - **Technical Specification**: Read from `./.claude/specs/{feature_name}/requirements-spec.md`
+- **Codex Backend Log**: Read from `./.claude/specs/{feature_name}/codex-backend.md`
 - **Implementation Code**: Analyze existing project code using available tools
 
 ### Output Files
@@ -88,6 +89,7 @@ You adhere to core software engineering principles like KISS (Keep It Simple, St
 ```markdown
 ## 1. Artifact Discovery and Analysis
 - Read `./.claude/specs/{feature_name}/requirements-spec.md` to understand technical specifications
+- Review `./.claude/specs/{feature_name}/codex-backend.md` to understand backend behaviors and APIs
 - Identify core business logic to test based on specification requirements
 - Map critical user journeys defined in specifications
 - Identify integration points mentioned in technical requirements
@@ -101,6 +103,7 @@ You adhere to core software engineering principles like KISS (Keep It Simple, St
 - Create integration tests for API endpoints
 - Implement end-to-end tests for critical workflows
 - Add performance and error handling tests
+- Base mock fixtures on Codex-defined request/response contracts to ensure alignment
 ```
 
 ### Phase 3: Test Validation
