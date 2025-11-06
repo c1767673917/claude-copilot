@@ -5,6 +5,7 @@
 - `--skip-tests`: Skip QA testing phase
 - `--direct-dev`: Skip SM planning, go directly to development after architecture
 - `--skip-scan`: Skip initial repository scanning (not recommended)
+- `--doc-profile=<minimal|standard|full>`: Override documentation depth (default: minimal)
 
 ## Context
 - Project to develop: $ARGUMENTS
@@ -96,6 +97,47 @@ Include:
 ```
 
 ## Workflow Overview
+
+### Documentation Profiles
+- Resolve `doc_profile` priority: CLI `--doc-profile` → `./.claude/settings.local.json` (`doc_profile`) → default `minimal`.
+- **minimal**: Produce only essential artifacts  
+  - `00-constraints.yaml`  
+  - `01-requirements-brief.md`  
+  - `02-architecture-brief.md`  
+  - `03-sprint-outline.md`  
+  - `codex-backend.md` *(record actual Codex run only)*  
+  - `review-notes.md` *(single consolidated review summary)*  
+  - `qa-summary.md` *(only when tests executed)*  
+  - `summary.md` *(orchestrator digest)*  
+  - `spec-manifest.json`
+- **standard**: Includes minimal set plus long-form artifacts (`01-product-requirements.md`, `02-system-architecture.md`, `03-sprint-plan.md`, `requirements-confirm.md`).
+- **full**: Legacy exhaustive mode (unrestricted).
+- Agents must refuse to generate artifacts not declared for the active profile.
+
+### Spec Manifest & Single-Write Guard
+- Create `./.claude/specs/{feature_name}/spec-manifest.json` immediately after feature slugging.
+- Manifest schema:
+```json
+{
+  "feature": "<slug>",
+  "doc_profile": "<profile>",
+  "generated_at": "<ISO8601 timestamp>",
+  "artifacts": [
+    {"id": "constraints", "path": "00-constraints.yaml", "status": "pending", "required": true},
+    {"id": "requirements-brief", "path": "01-requirements-brief.md", "status": "pending", "required": true}
+  ]
+}
+```
+- Maintain `status` (`pending`, `draft`, `final`, `skipped`) and optional `notes`.
+- Record which agent wrote each artifact in `notes` (e.g., `saved_by: architect`). Specialist agents are expected to write their deliverables directly once approved; the orchestrator verifies, applies any edits, and updates the manifest to `final`.
+- If a file requires orchestrator-side adjustments, perform them directly and update the `notes` (e.g., `revised_by: orchestrator`).
+- Keep `draft` status only while content is under discussion; move to `final` immediately after the on-disk file passes review.
+
+### Artifact Coordination Protocol
+- When delegating work, provide the exact file path and remind agents to confirm successful writes.
+- If an agent reports a write failure, diagnose and retry until the file is saved. Avoid reverting to copy/paste handoffs unless tooling limitations make it unavoidable.
+- After each artifact is written, read it locally to verify completeness before advancing the workflow gate.
+- Eliminate redundant transcription steps—prefer single-source writes by the responsible agent and targeted follow-up edits by the orchestrator.
 
 ### Phase 0.1: Repository Context (Automatic - Unless --skip-scan)
 Scan and analyze the existing codebase to understand project context.
@@ -496,28 +538,28 @@ Recalculate quality score and provide any additional questions if needed.
 DO NOT save files - return updated architecture content and score."
 ```
 
-#### 1d. Final Architecture Confirmation (Orchestrator handles)
+#### 1d. Final Architecture Confirmation & Save
 When quality score ≥ 90:
 1. Present final architecture summary to user
 2. Show quality score: {score}/100
 3. Ask: "架构设计已完成。是否保存架构文档？"
-4. If user confirms, proceed to save
+4. If the user declines, continue refinement.
+5. If the user confirms, instruct the architect to persist the document directly:
+```
+Use Task tool with bmad-architect agent:
+"The user approved the architecture. Please finalize the document and write it directly to `./.claude/specs/{feature_name}/02-system-architecture.md`. Overwrite previous drafts, verify the write succeeded, and list any sections that still need follow-up."
+```
+6. Expect the architect to report successful persistence (or surface errors). If the save fails, collaborate with the architect to retry until the file is written.
 
-#### 1e. Save Architecture
-Only after user confirmation:
-- Capture the final architecture markdown produced by the architect agent (store it locally in the orchestrator context)
-- Ensure directory `./.claude/specs/{feature_name}/` exists (create it if needed)
-- Estimate document length (`chars`) and approximate tokens (`ceil(chars / 4)`) to plan chunking
-- **Write the file directly** to `./.claude/specs/{feature_name}/02-system-architecture.md`
-  - The first write call should replace the file entirely
-  - For large documents, stream content in multiple append calls, each ≤4,000 tokens, to avoid tool limits and timeouts
-- If any Write call fails, surface the error, retry once, and if the second attempt fails, save the remaining content to `./.claude/specs/{feature_name}/FAILED-02-system-architecture.md`
-- After writing, optionally read back the file to verify integrity, then report success
-- Log a status line such as `✅ Architecture saved: {chars} chars (~{tokens} tokens), {direct|chunked} write, {chunks} chunks`
-- Do **not** route the full architecture document back through the architect agent solely for saving
+#### 1e. Architecture File Review
+After the architect confirms the save:
+- Read `./.claude/specs/{feature_name}/02-system-architecture.md` to spot-check completeness.
+- Apply any orchestrator edits directly to the file when necessary (use write/append tools instead of asking the architect to resend drafts).
+- Update the spec manifest entry for `02-system-architecture.md` to reflect the file status (`final`) and jot down notes (e.g., `saved_by: architect`, `last_reviewed: <timestamp>`).
+- Log a status line such as `✅ Architecture on disk: {chars} chars (~{tokens} tokens)` once verification is complete.
 
 #### 1f. Generate & Save API Contract (MANDATORY cross-team bridge)
-Immediately after the architecture document is persisted, request the architect to deliver the canonical API contract that downstream phases will enforce.
+Immediately after the architecture document is verified on disk, request the architect to deliver and persist the canonical API contract that downstream phases will enforce.
 
 ```
 Use Task tool with bmad-architect agent:
@@ -529,7 +571,7 @@ Technology Constraints Path: ./.claude/specs/{feature_name}/00-constraints.yaml
 Task: Produce the final API contract for this feature. This contract will be treated as the single source of truth for Codex backend generation and frontend integration.
 
 Output requirements:
-1. Provide a markdown contract ready to save to `./.claude/specs/{feature_name}/02-api-contract.md`. Include:
+1. Write the finalized markdown contract directly to `./.claude/specs/{feature_name}/02-api-contract.md`. The document must include:
    - Overview & version metadata (feature name, date, architect)
    - Authentication & headers requirements
    - Endpoint inventory table (method, path, summary, auth, idempotency)
@@ -537,9 +579,9 @@ Output requirements:
    - Shared data models (fields, types, nullability, validation rules)
    - Event/Webhook payloads if applicable
    - Contract change log & open issues
-2. If HTTP/JSON endpoints exist, also emit an OpenAPI 3.1 YAML document suitable for saving to `./.claude/specs/{feature_name}/02-openapi.yaml`. Keep it canonical (no placeholders, fully expanded schemas).
-3. Clearly label each artifact in separate fenced code blocks using ` ```markdown` for the contract and ` ```yaml` (or `json`) for OpenAPI.
-4. Highlight any areas still pending clarification so we can block backend work until resolved.
+2. If HTTP/JSON endpoints exist, also write an OpenAPI 3.1 YAML document to `./.claude/specs/{feature_name}/02-openapi.yaml`. Keep it canonical (no placeholders, fully expanded schemas).
+3. After writing, return a brief confirmation listing the saved files, document lengths, and any sections that still need clarification so we can block backend work if needed.
+4. If the write fails, explain the failure reason and wait for further instructions instead of reverting to draft output.
 
 Constraints:
 - Stay 100% aligned with locked technology stack.
@@ -548,12 +590,16 @@ Constraints:
 ```
 
 After receiving the response:
-1. Validate that an API contract markdown block was returned (non-empty, covers all endpoints the architecture introduced). If missing or incomplete → send the architect back for correction.
-2. Save the markdown artifact to `./.claude/specs/{feature_name}/02-api-contract.md` (same write rules as above).
-3. If an OpenAPI artifact is provided, save it to `./.claude/specs/{feature_name}/02-openapi.yaml`.
-4. Confirm both files exist and contain the expected sections. If validation fails, re-run the architect step until it succeeds.
-5. Summarize status (e.g., `✅ API contract saved (+openapi)`).
-6. **Do NOT proceed to sprint planning or Codex until the contract is successfully saved.**
+1. Confirm the architect reported writing `02-api-contract.md` (and `02-openapi.yaml` when applicable) directly to disk. If they only supplied validation notes or plaintext summaries, send an immediate correction:
+   ```
+   Your last reply only included validation results. I still need you to write the full API contract markdown to `02-api-contract.md` (and the OpenAPI spec to `02-openapi.yaml` if applicable). Please perform the write now and confirm success.
+   ```
+   Repeat until the files are persisted.
+2. Read the saved markdown contract to ensure every endpoint described in the architecture appears and that referenced models are defined.
+3. If an OpenAPI artifact was written, open it and verify it matches the contract. Reject bare validation messages; require the full spec to be saved.
+4. Update the manifest entries for `02-api-contract.md` (and `02-openapi.yaml` when present) with status `final`, including notes about who saved the file.
+5. Summarize status (e.g., `✅ API contract saved by architect (+openapi)`).
+6. **Do NOT proceed to sprint planning or Codex until the contract is successfully saved and reviewed.**
 
 ### 2. Orchestrator-Managed Refinement
 - Orchestrator manages all user interactions

@@ -101,18 +101,28 @@ Each phase should be independently deployable and testable.
 - **No Vague Descriptions**: Every requirement must be actionable and specific
 - **No Multi-Document Splitting**: Keep everything in one comprehensive document
 
+## Output Protocol
+
+- During analysis, share intermediate findings inline so the orchestrator can steer the specification.
+- When directed to finalize, write the specification directly to the appropriate path and confirm success with file path, size, and any outstanding questions.
+- Target by `doc_profile`:
+  - **minimal** → `./.claude/specs/{feature_name}/01-requirements-brief.md`
+  - **standard/full** → `./.claude/specs/{feature_name}/requirements-spec.md`
+- For `standard/full`, create `requirements-confirm.md` when clarification logs are required; write it directly once the orchestrator requests persistence. In `minimal`, fold the confirmation summary into the brief instead of producing a separate file.
+- If a write fails, report the exact error (missing directory, permissions, etc.) and wait for further instructions before retrying.
+
 ## Input/Output File Management
 
 ### Input Files
-- **Requirements Confirmation**: Read from `./.claude/specs/{feature_name}/requirements-confirm.md`
+- **Requirements Confirmation**: Read from `./.claude/specs/{feature_name}/requirements-confirm.md` when present; otherwise use orchestrator-provided briefing/notes.
 - **Codebase Context**: Analyze existing code structure using available tools
 
 ### Output Files
-- **Technical Specification**: Create `./.claude/specs/{feature_name}/requirements-spec.md`
+- As defined in the Output Protocol (brief vs specification) according to active `doc_profile`.
 
 ## Output Format
 
-Create a single technical specification file at `./.claude/specs/{feature_name}/requirements-spec.md` that serves as the complete blueprint for code generation.
+Create a single technical specification document matching the active profile that serves as the complete blueprint for code generation.
 
 The document should be:
 - **Comprehensive**: Contains all information needed for implementation

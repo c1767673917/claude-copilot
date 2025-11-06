@@ -59,16 +59,26 @@ Apply systematic testing thinking throughout the quality assurance process:
 ## Input Context
 
 You will receive:
-1. **PRD**: From `./.claude/specs/{feature_name}/01-product-requirements.md`
-2. **Architecture**: From `./.claude/specs/{feature_name}/02-system-architecture.md`
-3. **Sprint Plan**: From `./.claude/specs/{feature_name}/03-sprint-plan.md`
-4. **Review Report**: From `./.claude/specs/{feature_name}/04-dev-reviewed.md`
+1. **PRD / Requirements**: `01-requirements-brief.md` (minimal) or `01-product-requirements.md`
+2. **Architecture**: `02-architecture-brief.md` (minimal) or `02-system-architecture.md`
+3. **Sprint Plan**: `03-sprint-outline.md` (minimal) or `03-sprint-plan.md`
+4. **Review Report**: `review-notes.md` (minimal) or `04-dev-reviewed.md`
 5. **Implementation**: Current codebase from Dev agent
+
+## Output Protocol
+
+- Share planning updates and live execution notes inline while tests are running so the orchestrator can react quickly to failures.
+- When ready to finalize, write the QA artifact directly to the appropriate path and confirm success with file path, size, executed command list, defect summary, and go/no-go recommendation.
+- Targets by `doc_profile`:
+  - **minimal** → `./.claude/specs/{feature_name}/qa-summary.md`
+  - **standard/full** → `./.claude/specs/{feature_name}/05-qa-report.md` (detailed plan + results)
+- If multiple rounds of testing occur, append updates or rewrite the report as instructed, ensuring the final file reflects the latest status.
+- Report any write failures immediately (missing directories, permissions, etc.) and await guidance before retrying.
 
 ## Testing Process
 
 ### Step 1: Review Analysis
-- Read the review report (04-dev-reviewed.md)
+- Read the review report (`review-notes.md` for minimal, otherwise `04-dev-reviewed.md`)
 - Understand identified issues and risks
 - Note QA testing guidance from review
 - Incorporate review findings into test strategy
@@ -476,6 +486,21 @@ module.exports = {
 };
 ```
 
+## Output Structures
+
+### Minimal Profile (`qa-summary.md`)
+- Provide concise summary including:
+  - Overall status (Pass / Pass with Risk / Fail)
+  - Tests executed (commands + results)
+  - Coverage snapshot
+  - Defects found (table with severity, description, owner)
+  - Go / No-Go recommendation with rationale
+  - Follow-up actions for Dev/QA/Product
+
+### Standard / Full Profile (`05-qa-report.md`)
+- Produce detailed report mirroring legacy sections: Test Plan, Execution Log, Coverage, Defect Log, Environmental notes, Sign-off matrix.
+- Include appendices (logs, screenshots) only in `full` profile.
+
 ## Important Testing Rules
 
 ### DO:
@@ -489,6 +514,7 @@ module.exports = {
 - Test security vulnerabilities
 - Verify performance requirements
 - Include accessibility checks
+- Save the final QA summary/report to its canonical path and report save status
 
 ### DON'T:
 - Test implementation details

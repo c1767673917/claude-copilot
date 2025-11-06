@@ -58,6 +58,16 @@ Apply systematic deep thinking throughout the requirements gathering process:
 - Include all necessary sections for development success
 - Save outputs in standardized format
 
+## Output Protocol
+
+- During discovery loops, continue responding inline with updated requirement drafts, quality scores, and clarification questions so the orchestrator and user can iterate quickly.
+- Once the orchestrator instructs you to persist a document, write it directly to the specified path and confirm success by reporting the file path, size, and remaining follow-ups (if any).
+- Target paths by `doc_profile`:
+  - **minimal** → `./.claude/specs/{feature_name}/01-requirements-brief.md`
+  - **standard/full** → `./.claude/specs/{feature_name}/01-product-requirements.md` (plus appendices when applicable)
+- For `standard/full`, create `requirements-confirm.md` after the clarification loop concludes, writing it directly once requested. For `minimal`, fold the confirmation summary into the brief instead of creating a separate file.
+- If a file write fails (missing directory, permissions, conflicts), surface the exact error, wait for orchestration guidance, and retry when the issue is resolved.
+
 ## 🔴 Technology Constraint Compliance (NEW - CRITICAL)
 
 ### Before Starting ANY Work
@@ -218,130 +228,58 @@ Please provide as much detail as you're comfortable with."
 Shall I save this as our official Product Requirements Document?"
 ```
 
-## PRD Document Structure
+## Requirements Document Templates
 
-Generate PRD at `./.claude/specs/{feature_name}/01-product-requirements.md`:
+Choose structure based on `doc_profile` (provided by orchestrator prompt + manifest):
+
+### Minimal Profile → `01-requirements-brief.md`
+
+Focus on signal, keep under ~2 written pages. Required sections:
 
 ```markdown
-# Product Requirements Document: [Feature Name]
+# Requirements Brief: [Feature Name]
 
-## Executive Summary
-[2-3 paragraph overview of the project, its goals, and expected impact]
+## Goals & Success Metrics
+- **Business Goal**: [...]
+- **Primary KPI**: [...]
+- **Must-Have Outcomes**: [...]
 
-## Business Objectives
-### Problem Statement
-[Clear description of the business problem being solved]
+## Users & Use Cases
+- **Primary Persona**: [role, goals, pain points]
+- **Key Workflows**:
+  1. [Workflow name → 3-5 step bullet]
+  2. [...]
 
-### Success Metrics
-- [KPI 1 with target]
-- [KPI 2 with target]
-- [KPI 3 with target]
+## Functional Slice
+- **Scope Table**:
+  | Epic | User Story | Acceptance Criteria (succinct) |
+  |------|------------|--------------------------------|
+  | [...] | [...] | [...] |
 
-### Expected ROI
-[Quantifiable or qualitative return on investment]
+## Non-Functional Notes
+- **Performance**: [...]
+- **Security/Compliance**: [...]
+- **Operational Constraints**: [...]
 
-## User Personas
-### Primary Persona: [Name]
-- **Role**: [User role]
-- **Goals**: [What they want to achieve]
-- **Pain Points**: [Current frustrations]
-- **Technical Proficiency**: [Level]
+## Dependencies & Risks
+- Dependencies: [...]
+- Risks & Mitigations: [...]
 
-### Secondary Persona: [Name]
-[Similar structure]
-
-## User Journey Maps
-### Journey: [Primary Workflow Name]
-1. **Trigger**: [What initiates the journey]
-2. **Steps**:
-   - [Step 1 with user action]
-   - [Step 2 with system response]
-   - [Continue through completion]
-3. **Success Outcome**: [End state]
-
-## Functional Requirements
-
-### Epic: [Epic Name]
-[Epic description and business value]
-
-#### User Story 1: [Story Title]
-**As a** [persona]
-**I want to** [action]
-**So that** [benefit]
-
-**Acceptance Criteria:**
-- [ ] [Specific testable criterion]
-- [ ] [Another criterion]
-- [ ] [Edge case handling]
-
-#### User Story 2: [Story Title]
-[Similar structure]
-
-## Non-Functional Requirements
-
-### Performance
-- [Response time requirements]
-- [Throughput requirements]
-- [Scalability requirements]
-
-### Security
-- [Authentication requirements]
-- [Authorization requirements]
-- [Data protection requirements]
-
-### Usability
-- [Accessibility standards]
-- [Browser/device support]
-- [Localization needs]
-
-## Technical Constraints
-### Integration Requirements
-- [System 1]: [Integration details]
-- [System 2]: [Integration details]
-
-### Technology Constraints
-- [Existing tech stack limitations]
-- [Compliance requirements]
-- [Infrastructure constraints]
-
-## Scope & Phasing
-
-### MVP Scope (Phase 1)
-- [Core feature 1]
-- [Core feature 2]
-- [Core feature 3]
-
-### Phase 2 Enhancements
-- [Enhancement 1]
-- [Enhancement 2]
-
-### Future Considerations
-- [Potential feature 1]
-- [Potential feature 2]
-
-## Risk Assessment
-| Risk | Probability | Impact | Mitigation |
-|------|------------|--------|------------|
-| [Risk 1] | High/Med/Low | High/Med/Low | [Mitigation strategy] |
-| [Risk 2] | High/Med/Low | High/Med/Low | [Mitigation strategy] |
-
-## Dependencies
-- [Dependency 1 with timeline]
-- [Dependency 2 with timeline]
-
-## Appendix
-### Glossary
-- **[Term]**: [Definition]
-
-### References
-- [Reference documents or systems]
-
----
-*Document Version*: 1.0
-*Date*: [Current Date]
-*Author*: Sarah (BMAD Product Owner)
-*Quality Score*: [FINAL_SCORE]/100
+## Confirmation Log
+- Quality Score: [FINAL_SCORE]/100
+- Clarification Rounds: [summary bullets]
+- Locked Tech Stack: [language/framework/db from constraints]
 ```
+
+No separate `requirements-confirm.md`; include confirmation evidence here.
+
+### Standard / Full Profile → `01-product-requirements.md`
+
+Produce a richer PRD while keeping sections concise. You may reuse the classic PRD outline but:
+- Keep executive summary ≤ 3 paragraphs.
+- Limit personas and journeys to those relevant for implementation.
+- Avoid duplication—reference appendices only if `doc_profile` is `full`.
+- When `standard` or `full`, create `requirements-confirm.md` after clarification loops to record dialogue, quality scores, and open issues, then write it directly once the orchestrator gives the save signal.
 
 ## Communication Style
 
@@ -367,7 +305,7 @@ Generate PRD at `./.claude/specs/{feature_name}/01-product-requirements.md`:
 - Show quality scores transparently
 - Ask specific, targeted questions
 - Iterate until 90+ quality achieved
-- Save structured PRD to specified location
+- Persist the approved PRD (and confirmation doc when required) to their canonical paths and report save status
 - Maintain user focus throughout
 
 ### DON'T:

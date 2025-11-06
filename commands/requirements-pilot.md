@@ -4,6 +4,7 @@
 ### Options
 - `--skip-tests`: Skip testing phase entirely
 - `--skip-scan`: Skip initial repository scanning (not recommended)
+- `--doc-profile=<minimal|standard|full>`: Override documentation depth (default: minimal)
 
 ## Context
 - Feature to develop: $ARGUMENTS
@@ -63,10 +64,31 @@ Output: Comprehensive repository context report including:
 - Integration points for new features
 - Potential constraints or considerations
 
-Save scan results to: ./.claude/specs/{feature_name}/00-repository-context.md"
+Save scan results to: ./.claude/specs/{feature_name}/00-repo-scan.md"
 ```
 
 ## Workflow Overview
+
+### Documentation Profiles
+- Resolve `doc_profile` priority: CLI → `./.claude/settings.local.json` → default `minimal`.
+- **minimal** artifacts:  
+  - `00-constraints.yaml` *(optional; only when constraints finalized)*  
+  - `01-requirements-brief.md`  
+  - `requirements-diff.md` *(change log vs repository context)*  
+  - `codex-backend.md` *(only when Codex executed)*  
+  - `review-notes.md` *(single QA/review summary)*  
+  - `qa-summary.md` *(only if tests executed)*  
+  - `summary.md`  
+  - `spec-manifest.json`
+- **standard**: Includes minimal set plus detailed confirmations (`requirements-confirm.md`, `requirements-spec.md`) and agent transcripts.
+- **full**: Legacy exhaustive mode.
+- Sub-agents must refuse to emit artifacts not listed for the active profile.
+
+### Spec Manifest & Artifact Persistence
+- Create `./.claude/specs/{feature_name}/spec-manifest.json` immediately after deriving the feature slug.
+- Manifest format mirrors BMAD workflow (feature, doc_profile, generated_at, artifacts array).
+- Delegate agents write their approved artifacts directly to the specified paths. Record `saved_by` and other notes in the manifest after verifying contents.
+- If any agent reports a write failure, troubleshoot and retry until persisted. Use ad-hoc fallbacks only when tooling prevents direct writes, and capture the reason in manifest notes.
 
 ### Phase 0: Repository Context (Automatic - Unless --skip-scan)
 Scan and analyze the existing codebase to understand project context.
@@ -111,10 +133,12 @@ Analyze requirements for [$ARGUMENTS] considering:
 
 ### 4. Interactive Clarification Loop
 - **Quality Gate**: Continue until score ≥ 90 points (no iteration limit)
-- Generate targeted clarification questions for missing areas
-- Consider repository context in clarifications
-- Document confirmation process and save to `./.claude/specs/{feature_name}/requirements-confirm.md`
-- Include: original request, repository context impact, clarification rounds, quality scores, final confirmed requirements
+  - Generate targeted clarification questions for missing areas
+  - Consider repository context in clarifications
+  - Documentation:
+    - `doc_profile = minimal` → summarize confirmation loop inside `01-requirements-brief.md`
+    - `doc_profile = standard/full` → write `./.claude/specs/{feature_name}/requirements-confirm.md`
+  - Include: original request, repository context impact, clarification rounds, quality scores, final confirmed requirements
 
 ## 🛑 User Approval Gate (Mandatory Stop Point) 🛑
 
@@ -135,7 +159,7 @@ After achieving 90+ quality score:
 
 ### Phase 2A: Codex Backend Implementation (MANDATORY BEFORE AGENTS)
 1. **Gather Context**
-   - `./.claude/specs/{feature_name}/00-repository-context.md` (if it exists)
+  - `./.claude/specs/{feature_name}/00-repo-scan.md` (if it exists)
    - `./.claude/specs/{feature_name}/requirements-confirm.md`
    - `./.claude/specs/{feature_name}/requirements-spec.md`
 2. **Build Prompt**
@@ -259,7 +283,7 @@ else:
 
 All outputs saved to `./.claude/specs/{feature_name}/`:
 ```
-00-repository-context.md      # Repository scan results (if not skipped)
+00-repo-scan.md               # Repository scan results (if not skipped)
 requirements-confirm.md        # Requirements confirmation process
 requirements-spec.md          # Technical specifications
 codex-backend.md              # Prompt + response log for mandatory Codex backend implementation

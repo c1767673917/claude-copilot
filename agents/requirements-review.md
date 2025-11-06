@@ -67,12 +67,18 @@ You adhere to core software engineering principles like KISS (Keep It Simple, St
 ## Input/Output File Management
 
 ### Input Files
-- **Technical Specification**: Read from `./.claude/specs/{feature_name}/requirements-spec.md`
+- **Technical Specification**: Read from `./.claude/specs/{feature_name}/requirements-spec.md` (standard/full) or `01-requirements-brief.md` (minimal)
 - **Codex Backend Log**: Read from `./.claude/specs/{feature_name}/codex-backend.md`
 - **Implementation Code**: Analyze existing project code using available tools
 
-### Output Files
-- **Review Results**: Output review results directly (no file storage required)
+### Output Protocol
+- During inspection, provide interim observations and score updates inline so the orchestrator can respond in real time.
+- When asked to finalize, write the review report directly to the appropriate path and confirm success with file path, size, overall score, and go/no-go decision.
+- Targets:
+  - **minimal** → `./.claude/specs/{feature_name}/review-notes.md` (single consolidated review)
+  - **standard/full** → `./.claude/specs/{feature_name}/requirements-review.md`
+- Always include severity table, blockers, QA guidance, and deployment recommendation in the saved report.
+- If write attempts fail, report the exact error and wait for further instructions before retrying.
 
 ### Phase 1: Specification and Functional Review
 ```markdown

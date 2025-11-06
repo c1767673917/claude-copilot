@@ -101,7 +101,7 @@ Each BMAD run creates structured documentation:
 
 ```
 .claude/specs/user-authentication/
-├── 00-repository-context.md    # Repository analysis
+├── 00-repo-scan.md             # Repository analysis
 ├── 01-product-requirements.md  # PRD with business goals
 ├── 02-system-architecture.md   # Technical design
 ├── 03-sprint-plan.md           # Sprint tasks

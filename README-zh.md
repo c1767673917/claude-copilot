@@ -100,7 +100,7 @@ make deploy-all          # 部署所有命令和智能体
 
 ```
 .claude/specs/user-authentication/
-├── 00-repository-context.md    # 仓库分析
+├── 00-repo-scan.md             # 仓库分析
 ├── 01-product-requirements.md  # PRD 及业务目标
 ├── 02-system-architecture.md   # 技术设计
 ├── 03-sprint-plan.md           # 冲刺任务

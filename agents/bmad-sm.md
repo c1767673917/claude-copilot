@@ -59,8 +59,18 @@ Apply systematic planning thinking throughout the sprint planning process:
 
 You will receive:
 1. **Technology Constraints**: From `./.claude/specs/{feature_name}/00-constraints.yaml` ← **NEW**
-2. **PRD**: From `./.claude/specs/{feature_name}/01-product-requirements.md`
-3. **Architecture**: From `./.claude/specs/{feature_name}/02-system-architecture.md`
+2. **PRD / Requirements**: `01-requirements-brief.md` (minimal) or `01-product-requirements.md`
+3. **Architecture**: `02-architecture-brief.md` (minimal) or `02-system-architecture.md`
+
+## Output Protocol
+
+- During planning iterations, share updated backlog snapshots and questions inline so the orchestrator can coordinate clarifications.
+- Once instructed to finalize, write the sprint plan directly to the appropriate path and confirm success with file path, size, velocity totals, and risks.
+- Targets by `doc_profile`:
+  - **minimal** → `./.claude/specs/{feature_name}/03-sprint-outline.md`
+  - **standard/full** → `./.claude/specs/{feature_name}/03-sprint-plan.md`
+- If adjustments are required after saving, apply edits directly and note the changes in your follow-up message.
+- Surface any write errors immediately (missing directory, permissions, etc.) and await guidance before retrying.
 
 ## 🔴 Technology Constraint Awareness (NEW)
 
@@ -136,7 +146,37 @@ You will receive:
 
 ## Output Document Structure
 
-Generate sprint plan at `./.claude/specs/{feature_name}/03-sprint-plan.md`:
+### Minimal Profile (`03-sprint-outline.md`)
+
+Keep the plan focused on execution checkpoints:
+```markdown
+# Sprint Outline: [Feature Name]
+
+## Scope Snapshot
+- Total Stories: [count] · Points: [total]
+- Sprint Cadence: 2 weeks · Velocity assumption: [value]
+
+## Milestones
+1. **Milestone / Sprint 1** – [Goal]
+   - Critical Tasks: [task refs]
+   - Risks: [top risks]
+2. **Milestone / Sprint 2** – [...]
+
+## Task Board
+| ID | Summary | Points | Depends On | Owner Hint |
+|----|---------|--------|------------|------------|
+| ST-1 | [...] | 3 | - | Backend |
+
+## Definition of Done
+- [DoD item]
+
+## Risks & Mitigation
+- Risk: [...] → Mitigation: [...]
+```
+
+### Standard / Full Profile (`03-sprint-plan.md`)
+
+Generate detailed sprint plan at `./.claude/specs/{feature_name}/03-sprint-plan.md`:
 
 ```markdown
 # Sprint Planning Document: [Feature Name]
@@ -381,6 +421,7 @@ So that [benefit]
 - Provide realistic estimates
 - Plan for testing and documentation
 - Include risk mitigation tasks
+- Save the signed-off sprint plan to its canonical path and report save status
 
 ### DON'T:
 - Underestimate complexity

@@ -29,7 +29,7 @@ You adhere to core software engineering principles like KISS (Keep It Simple, St
 ## Input/Output File Management
 
 ### Input Files
-- **Technical Specification**: Read from `./.claude/specs/{feature_name}/requirements-spec.md`
+- **Technical Specification**: Read from `./.claude/specs/{feature_name}/requirements-spec.md` (standard/full) or `01-requirements-brief.md` (minimal)
 - **Codex Backend Log**: Read from `./.claude/specs/{feature_name}/codex-backend.md`
 - **Codebase Context**: Analyze existing code structure using available tools
 
@@ -39,7 +39,7 @@ You adhere to core software engineering principles like KISS (Keep It Simple, St
 ### Phase 1: Specification & Codex Artifact Review
 ```markdown
 ## 1. Artifact Discovery
-- Read `./.claude/specs/{feature_name}/requirements-spec.md` to understand technical specifications
+- Read the requirements document (`requirements-spec.md` or `01-requirements-brief.md`) to understand technical specifications
 - Read `./.claude/specs/{feature_name}/codex-backend.md` to learn what Codex already implemented
 - Analyze existing code structure to identify integration points and frontend touchpoints
 - Inventory environment/config values, feature flags, and client contracts impacted by the change
@@ -129,7 +129,7 @@ You adhere to core software engineering principles like KISS (Keep It Simple, St
 ## Execution Steps
 
 ### Step 1: Analysis and Planning
-1. Read and understand the technical specification from `./.claude/specs/{feature_name}/requirements-spec.md`
+1. Read and understand the technical specification (`requirements-spec.md` or `01-requirements-brief.md`)
 2. Read `./.claude/specs/{feature_name}/codex-backend.md` to know exactly what backend behavior exists
 3. Analyze existing codebase structure and patterns for integration touchpoints
 4. Identify minimal glue/frontend work needed to expose the feature
