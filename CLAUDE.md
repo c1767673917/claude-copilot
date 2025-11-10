@@ -205,30 +205,25 @@ CORRECTIVE ACTION: Stopping immediately and calling mcp__codex_cli__ask_codex.
 
 ## How to Call Codex (4-Step Mandatory Process)
 
-### Step 1: Prepare Context (READ ALL FILES)
+### Step 1: Prepare Context (READ EVERYTHING THAT MATTERS)
 
-**YOU MUST read these files in THIS ORDER**:
+Before touching Codex, gather *every* artifact that constrains backend work. Cover these categories, in whatever files your current workflow provides:
 
-1. **Read** `.claude/specs/{feature}/00-constraints.yaml`
-   - Purpose: Lock technology stack
-   - Critical: Pass EXACT content to Codex
+1. **Technology Constraints** – the document(s) that lock stack selections, versions, hosting limits, etc.
+2. **Confirmed Requirements / PRD** – the authoritative scope you and the user agreed on.
+3. **Architecture / System Design** – component boundaries, data models, interfaces.
+4. **Sprint / Task Plan** – the backlog slice that describes what Codex must build right now.
+5. **Frontend/API Contract** – anything that defines request/response shapes or integration rules.
+6. **Repository Context** – the latest scan/report of existing code (directory layout, stack, patterns).
 
-2. **Read** `.claude/specs/{feature}/01-product-requirements.md`
-   - Purpose: Understand feature requirements
+For each category:
+- Identify which file(s) supply the information (create/refresh them if missing).
+- Read them fully so you can pass the exact content to Codex.
+- Decide which repository files Codex must inspect directly; you will attach them via `@file` in Step 2.
 
-3. **Read** `.claude/specs/{feature}/02-system-architecture.md`
-   - Purpose: Follow architectural decisions
+If a category truly does not exist for this task, call it out explicitly in the prompt and explain why (e.g., “No sprint plan yet—single ad-hoc fix”). Do **not** continue until every category is either read or formally declared absent.
 
-4. **Read** `.claude/specs/{feature}/03-sprint-plan.md`
-   - Purpose: Extract backend tasks ONLY
-
-5. **Read** `.claude/specs/{feature}/04-frontend/api-client.md` (if exists)
-   - Purpose: CRITICAL - Backend must match this contract exactly
-
-6. **Read** `.claude/specs/{feature}/00-repo-scan.md` (if exists)
-   - Purpose: Understand repository context
-
-**CHECKPOINT**: Before Step 2, verify you have content from ALL files above.
+**CHECKPOINT**: Confirm all categories are covered before moving to Step 2.
 
 ---
 
@@ -240,29 +235,30 @@ CORRECTIVE ACTION: Stopping immediately and calling mcp__codex_cli__ask_codex.
 # BACKEND [IMPLEMENTATION|BUG_FIX|CODE_REVIEW]
 
 ## TECHNOLOGY CONSTRAINTS (MUST FOLLOW - NON-NEGOTIABLE)
-[paste COMPLETE 00-constraints.yaml content here]
+[paste the full content from the file(s) that lock the tech stack/constraints]
 
 **ENFORCEMENT**: Use ONLY the specified tech stack. Any deviation = FAILURE.
 
 ## PRODUCT REQUIREMENTS
-[paste relevant sections from 01-product-requirements.md]
+[paste the confirmed requirements/PRD content]
 
 ## SYSTEM ARCHITECTURE
-[paste relevant sections from 02-system-architecture.md]
+[paste the sections that describe architecture and component boundaries]
 
 ## SPRINT PLAN - BACKEND TASKS ONLY
-[extract ONLY backend-related tasks from 03-sprint-plan.md]
+[paste the task list describing what Codex must implement right now]
 
 ## REPOSITORY CONTEXT
-[paste 00-repo-scan.md if exists]
+[paste the latest repository scan / context summary]
 
 ## FRONTEND API CONTRACT (CRITICAL - EXACT MATCH REQUIRED)
-[paste 04-frontend/api-client.md if exists]
+[paste the contract or documentation that defines request/response formats]
 
 ## CODE CONTEXT (ATTACH VIA @file)
-- @path/to/relevant/file1
-- @path/to/relevant/file2
-- [Summaries for any trimmed sections; note omissions explicitly]
+- List every repository file Codex must open with `@file`, e.g.
+  - `@path/to/relevant/file1`
+  - `@path/to/relevant/file2`
+- For very large files, attach the critical slices and summarize what was omitted (and why).
 
 **CRITICAL**: Backend responses MUST match:
 - Exact field names (camelCase/snake_case as specified)
@@ -292,8 +288,8 @@ Examples:
 - Run tests and ensure passing
 - After coding, capture change summary via `git status --short` and `git diff --stat`
 
-### 2. Implementation Log → `.claude/specs/{feature}/04-backend/implementation.md`
-**Required sections**:
+### 2. Implementation Log (path defined by your workflow)
+Before Step 3, choose the canonical file that will store Codex’s implementation log (e.g. `.claude/specs/{feature}/codex-backend.md`, `.claude/specs/{feature}/04-backend/implementation.md`, etc.) and state that path inside the prompt. Whatever path you choose, it **must** contain:
 - Summary (sprint, tasks completed, files modified, test coverage %)
 - Change Summary (git status --short output, git diff --stat output, per-file notes highlighting added/modified/deleted files with reasons)
 - Implemented Features (with file paths, test results, API endpoints)
@@ -301,8 +297,10 @@ Examples:
 - Questions for Review (priority High/Medium/Low, context, your recommendation)
 - Self-Review Checklist (constraints compliance, tests status, coverage %)
 
-### 3. Codex Output JSON → `.claude/specs/{feature}/04-backend/codex-output.json`
-**Required format**:
+Record this path as `IMPLEMENTATION_LOG_PATH`; you will reference it in later steps.
+
+### 3. Codex Output JSON (path defined by your workflow)
+Similarly, define and announce a canonical JSON file (e.g. `.claude/specs/{feature}/04-backend/codex-output.json`, `.claude/specs/{feature}/codex-output.json`, etc.). That JSON must follow this schema regardless of location:
 ```json
 {
   "timestamp": "ISO 8601",
@@ -344,6 +342,8 @@ Examples:
 ```
 ```
 
+Record this path as `CODEX_OUTPUT_PATH`. If your workflow mandates additional artifacts (manifest entries, review notes, QA summaries, etc.), declare them in the prompt and hold Codex accountable for writing them.
+
 ---
 
 ### Step 3: EXECUTE Codex MCP Tool Call
@@ -374,28 +374,28 @@ Use the `mcp__codex_cli__ask_codex` tool with parameters above.
 
 **File Existence Verification**:
 ```
-□ .claude/specs/{feature}/04-backend/implementation.md exists
-□ .claude/specs/{feature}/04-backend/codex-output.json exists
+□ IMPLEMENTATION_LOG_PATH exists (the exact file you defined in the prompt)
+□ CODEX_OUTPUT_PATH exists
 □ Backend code files exist in repository
 □ Test files exist in repository
 ```
 
 **Content Validation**:
 ```
-□ Read codex-output.json → status is not "failed"
-□ Read codex-output.json → tests_passing > 0
-□ Read codex-output.json → change_summary.git_status & git_diff_stat populated
+□ Read CODEX_OUTPUT_PATH → status is not "failed"
+□ Read CODEX_OUTPUT_PATH → tests_passing > 0
+□ Read CODEX_OUTPUT_PATH → change_summary.git_status & git_diff_stat populated
 □ Compare change_summary.files[] notes against actual repository edits
-□ Confirm every @file listed in prompt is represented in change_summary or explicitly marked as read-only/no-change in implementation.md
-□ Verify implementation.md documents all backend tasks and change summary details
+□ Confirm every @file listed in the prompt is represented in change_summary or explicitly marked as read-only/no-change inside IMPLEMENTATION_LOG_PATH
+□ Verify IMPLEMENTATION_LOG_PATH documents all backend tasks and change summary details
 ```
 
 **Quality Checks**:
 ```
 □ Run tests → all passing?
 □ Check coverage → meets target (>80%)?
-□ Review implementation.md → technical decisions + change summary make sense?
-□ Check questions[] in codex-output.json → any blockers?
+□ Review IMPLEMENTATION_LOG_PATH → technical decisions + change summary make sense?
+□ Check questions[] in CODEX_OUTPUT_PATH → any blockers?
 ```
 
 **IF ANY CHECK FAILS**:
@@ -408,16 +408,16 @@ Use the `mcp__codex_cli__ask_codex` tool with parameters above.
 ### Step 5: Review Codex Questions & Decide Next Action
 
 **Review change summary first**:
-- Inspect `codex-output.json.change_summary` (git status, diff stat, per-file notes)
-- Cross-check against implementation.md Change Summary
+- Inspect `CODEX_OUTPUT_PATH.change_summary` (git status, diff stat, per-file notes)
+- Cross-check against IMPLEMENTATION_LOG_PATH Change Summary
 - Note any unexpected edits before proceeding
 
-**Then read** `codex-output.json` → `questions` array
+**Then read** `CODEX_OUTPUT_PATH` → `questions` array
 
 **For EACH question**:
 1. **Understand**: Read question + context + recommendation
 2. **Decide**: Make clear decision (approve, modify, reject)
-3. **Document**: Write to `.claude/specs/{feature}/04-backend/review-answers.md`
+3. **Document**: Write to the review answers file defined by your workflow (pick a path ahead of time, e.g. `.claude/specs/{feature}/review-answers.md`)
 
 **Answer Template**:
 ```markdown
@@ -440,7 +440,7 @@ Codex Questions = 0 AND Tests Passing AND Coverage Good
 
 Codex Questions > 0 OR Tests Failing OR Coverage Low
   → 🔄 Prepare revision (max 3 iterations total)
-  → Create review-answers.md
+  → Update the review answers file with your decisions
   → Call Codex again with feedback
 
 Iterations = 3 AND Still has issues
@@ -463,7 +463,7 @@ Iterations = 3 AND Still has issues
 [paste complete context from Step 2]
 
 ## REVIEW FEEDBACK
-[paste review-answers.md content]
+[paste the contents of your review answers file]
 
 ## SPECIFIC CHANGES REQUIRED
 [extract action items from review-answers.md]
@@ -472,10 +472,10 @@ Iterations = 3 AND Still has issues
 1. Address ALL feedback points
 2. Make ONLY necessary changes
 3. Re-run all tests
-4. Update implementation.md with revision log
+4. Update IMPLEMENTATION_LOG_PATH with revision log
 
 ## REVISION LOG REQUIREMENTS
-Add to implementation.md:
+Add to IMPLEMENTATION_LOG_PATH:
 ### Revision [N] - [Date]
 - **Issues Fixed**: [list]
 - **Questions Addressed**: [list]
@@ -496,7 +496,7 @@ Add to implementation.md:
 **Remember**: Codex is the Tool, You are the Master
 
 1. **Backend Tasks → Codex**
-2. **Complete Context → Must** (all 6 files)
+2. **Complete Context → Must** (every category: constraints, requirements, architecture, plan, API contract, repo context)
 3. **Iteration Limit → 3 times**
 
 **Technology Constraint Compliance = 100%**
